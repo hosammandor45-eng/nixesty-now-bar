@@ -110,7 +110,7 @@ fn shelf(n: usize, hover: Option<usize>, selected: &[usize], said: Option<(Shelf
             _ => (op, op_label(op).to_string()),
         })
         .collect();
-    ShelfCard { tiles, hover, chips }
+    ShelfCard { tiles, hover, chips, said: said.map(|(op, _)| op) }
 }
 
 /// A picture in Epic's launcher cache on this PC (missing elsewhere: the store's colour shows).
@@ -302,6 +302,7 @@ fn main() -> Result<()> {
         CardContent::Shelf(shelf(5, Some(1), &[0], Some((ShelfOp::CopyText, "Kopyalandı")))),
         CardContent::Shelf(shelf(12, None, &[0, 8, 11], None)),
         CardContent::Shelf(shelf(12, Some(5), &[], None)),
+        CardContent::Shelf(shelf(1, None, &[], Some((ShelfOp::CopyText, "Kopyalandı · Türkçe tanıyıcı yok")))),
         CardContent::Claude(Box::new(claude_card(LiveState::Run, true, false, false))),
         CardContent::Claude(Box::new(claude_card(LiveState::Run, false, false, true))),
         CardContent::Claude(Box::new(claude_card(LiveState::Wait, false, true, true))),

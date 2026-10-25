@@ -3173,3 +3173,31 @@ msgstr "Shrink"
 #: src/activities/shelf.rs
 msgid "Zip yap"
 msgstr "Zip"
+
+#: src/app.rs
+msgid "Okunuyor…"
+msgstr "Reading…"
+
+#: src/app.rs
+msgid "Metin bulunamadı"
+msgstr "No text found"
+
+#: src/app.rs
+msgid "Kopyalandı"
+msgstr "Copied"
+
+#: src/app.rs
+msgid "Kopyalandı · {} tanıyıcı yok"
+msgstr "Copied · no {} recogniser"
+
+#: src/app.rs
+msgid "Kopyalanamadı"
+msgstr "Couldn't copy"
+
+#: src/app.rs
+msgid "Metin tanıma yok"
+msgstr "No text recognition"
+
+#: src/app.rs
+msgid "Açılamadı"
+msgstr "Couldn't open"

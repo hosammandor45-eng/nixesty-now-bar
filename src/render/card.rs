@@ -373,6 +373,8 @@ pub struct ShelfCard {
     pub tiles: Vec<ShelfTile>,
     pub hover: Option<usize>,
     pub chips: Vec<(ShelfOp, String)>,
+    /// The chip saying its result: alone on the footer while the others don't fit beside it.
+    pub said: Option<ShelfOp>,
 }
 
 /// A footer chip's glyph.
@@ -1627,10 +1629,17 @@ impl Painter<'_, '_> {
         }
         // The footer: what the chips do to the selection, or to everything; "Temizle"'s look.
         let label = TextStyle::new(Face::Text, Weight::Medium, d(12.0), white(0.85));
-        let widths = c.chips.iter().map(|(_, text)| self.ink.measure(text, &label)).collect::<Result<Vec<f32>>>()?;
-        let chips = shelf_chips(&widths, crate::activities::shelf::rows(c.tiles.len()), self.s);
+        let rows = crate::activities::shelf::rows(c.tiles.len());
+        let mut shown: Vec<&(ShelfOp, String)> = c.chips.iter().collect();
+        let mut widths = shown.iter().map(|(_, text)| self.ink.measure(text, &label)).collect::<Result<Vec<f32>>>()?;
+        if shelf_chips(&widths, rows, self.s).last().is_some_and(|last| last.right > d(350.0).round()) {
+            if let Some(i) = shown.iter().position(|(op, _)| Some(*op) == c.said) {
+                shown = vec![shown[i]];
+                widths = vec![widths[i]];
+            }
+        }
         let glyph_style = TextStyle::new(Face::Icons, Weight::Regular, d(13.0), white(0.85)).centered();
-        for ((op, text), chip) in c.chips.iter().zip(chips) {
+        for ((op, text), chip) in shown.into_iter().zip(shelf_chips(&widths, rows, self.s)) {
             let h = chip.bottom - chip.top;
             self.ink.rrect(chip, h / 2.0, white(0.09))?;
             self.ink.text(&glyph(op_icon(*op)).to_string(), D2D_RECT_F { left: chip.left + d(12.0), right: chip.left + d(26.0), ..chip }, &glyph_style)?;
@@ -2349,7 +2358,7 @@ mod tests {
 
     fn shelf_card(n: usize) -> ShelfCard {
         let tiles = (0..n).map(|i| ShelfTile { name: format!("f{i}.txt"), thumb: None, kind: FileKind::Document, selected: false }).collect();
-        ShelfCard { tiles, hover: None, chips: vec![] }
+        ShelfCard { tiles, hover: None, chips: vec![], said: None }
     }
 
     #[test]

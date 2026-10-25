@@ -4,6 +4,7 @@ pub mod audio;
 pub mod autostart;
 pub mod bt_battery;
 pub mod captures;
+pub mod clipboard;
 pub mod dragdrop;
 pub mod frame;
 pub mod fullscreen;

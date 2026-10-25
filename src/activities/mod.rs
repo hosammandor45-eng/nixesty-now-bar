@@ -22,6 +22,8 @@ pub mod lyrics;
 pub mod lyrics_worker;
 pub mod power;
 pub mod shelf;
+pub mod shelf_tools;
+pub mod shelf_tools_worker;
 pub mod shelf_worker;
 pub mod timer;
 pub mod weather;

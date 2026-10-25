@@ -29,6 +29,7 @@ use crate::activities::brief::{date_line, day_key, due, first_name, greeting, pi
 use crate::platform::session::{brief_day, set_brief_day, windows_full_name};
 use crate::activities::shelf::{op_label, ops, Shelf, ShelfOp};
 use crate::activities::shelf_worker::{ShelfMailbox, ShelfWorker};
+use crate::activities::shelf_tools_worker::{Done as ToolDone, Job as ToolJob, ToolMailbox, ToolWorker, Why as ToolWhy};
 use crate::activities::football_worker::FootballWorker;
 use crate::activities::basketball_worker::BasketballWorker;
 use crate::activities::media::{seek_position, MediaCommand, MediaSnapshot, SeekHold};
@@ -763,6 +764,8 @@ pub struct App {
     tile_press: Option<(usize, i32, i32)>,
     /// A footer chip's result shown in its place, until when (ms; `u64::MAX` while it works).
     shelf_status: Option<(ShelfOp, String, u64)>,
+    tool_worker: ToolWorker,
+    tool_mailbox: ToolMailbox,
     updater: Updater,
     update_mailbox: UpdateMailbox,
     /// A newer release the updater found (the tray offers it).
@@ -814,6 +817,8 @@ impl App {
         crate::platform::captures::start(crate::platform::captures::capture_dirs(), capture_mailbox.clone(), crate::platform::windows::post_capture, shot_px);
         let shelf_mailbox: ShelfMailbox = Default::default();
         let shelf_worker = ShelfWorker::start(shelf_mailbox.clone(), crate::platform::windows::post_shelf);
+        let tool_mailbox: ToolMailbox = Default::default();
+        let tool_worker = ToolWorker::start(tool_mailbox.clone(), crate::platform::windows::post_shelf_tool);
         let weather_worker = WeatherWorker::start(crate::activities::weather_worker::Place::of(&settings::current()), weather_mailbox.clone(), crate::platform::windows::post_weather);
         let update_mailbox = UpdateMailbox::default();
         let items_mailbox = ItemsMailbox::default();
@@ -958,6 +963,8 @@ impl App {
             shelf_hover: None,
             tile_press: None,
             shelf_status: None,
+            tool_worker,
+            tool_mailbox,
             updater,
             update_mailbox,
             update_ready: updater_state().filter(|s| newer(&s.latest, VERSION)),
@@ -1699,7 +1706,7 @@ impl App {
                     .enumerate()
                     .map(|(n, i)| ShelfTile { name: i.name.clone(), thumb: self.shelf_thumbs.get(&i.path).cloned().flatten(), kind: i.kind, selected: self.shelf.is_selected(n) })
                     .collect();
-                CardContent::Shelf(ShelfCard { tiles, hover: self.shelf_hover, chips: self.shelf_chips() })
+                CardContent::Shelf(ShelfCard { tiles, hover: self.shelf_hover, chips: self.shelf_chips(), said: self.shelf_status.as_ref().map(|(op, _, _)| *op) })
             }),
             OpenCard::Activity(ActivityKind::Game(key)) => self.game_card(key, now).map(|c| CardContent::Game(Box::new(c))),
             OpenCard::Activity(ActivityKind::Clock | ActivityKind::Weather) => self.weather_card().map(|c| CardContent::Weather(Box::new(c))),
@@ -1988,7 +1995,7 @@ impl App {
     fn shelf_chips(&self) -> Vec<(ShelfOp, String)> {
         ops(&self.shelf.targets())
             .into_iter()
-            .filter(|op| matches!(op, ShelfOp::Share))
+            .filter(|op| matches!(op, ShelfOp::Share | ShelfOp::CopyText))
             .map(|op| match &self.shelf_status {
                 Some((done, text, _)) if *done == op => (op, text.clone()),
                 _ => (op, op_label(op).to_string()),
@@ -2011,8 +2018,46 @@ impl App {
                     self.shelf_say(op, tr("Paylaşılamadı"));
                 }
             }
-            ShelfOp::CopyText | ShelfOp::Shrink | ShelfOp::Zip => {}
+            // One at a time: a chip still working takes no second click.
+            _ if self.shelf_status.as_ref().is_some_and(|(_, _, until)| *until == u64::MAX) => {}
+            ShelfOp::CopyText => {
+                if let Some(path) = targets.into_iter().next() {
+                    self.shelf_status = Some((op, tr("Okunuyor…").to_string(), u64::MAX));
+                    self.tool_worker.send(ToolJob::Read(path));
+                }
+            }
+            ShelfOp::Shrink | ShelfOp::Zip => {}
         }
+    }
+
+    /// What the shelf's tools finished: text onto the clipboard, the chip says how it went.
+    fn take_tools(&mut self) -> Result<()> {
+        let done: Vec<ToolDone> = self.tool_mailbox.lock().map(|mut m| std::mem::take(&mut *m)).unwrap_or_default();
+        for d in done {
+            match d {
+                ToolDone::Text { text, .. } if text.trim().is_empty() => self.shelf_say(ShelfOp::CopyText, tr("Metin bulunamadı")),
+                ToolDone::Text { text, missing } => match crate::platform::clipboard::set_text(self.main.hwnd, &text) {
+                    Ok(()) => {
+                        log(&format!("shelf: {} characters copied", text.chars().count()));
+                        // Read by another language's recogniser: ş, ğ and ı may be off.
+                        let said = missing.map_or_else(|| tr("Kopyalandı").to_string(), |lang| trf("Kopyalandı · {} tanıyıcı yok", &[&lang]));
+                        self.shelf_say(ShelfOp::CopyText, &said);
+                    }
+                    Err(e) => {
+                        log(&format!("shelf: clipboard ({e})"));
+                        self.shelf_say(ShelfOp::CopyText, tr("Kopyalanamadı"));
+                    }
+                },
+                ToolDone::Failed { op, why } => self.shelf_say(
+                    op,
+                    match why {
+                        ToolWhy::NoRecognizer => tr("Metin tanıma yok"),
+                        ToolWhy::Unreadable => tr("Açılamadı"),
+                    },
+                ),
+            }
+        }
+        self.refresh()
     }
 
     /// A chip's result in place of its label for a few seconds.
@@ -3861,6 +3906,7 @@ impl App {
             UiEvent::Games => self.take_games(),
             UiEvent::Wellbeing => self.take_wellbeing(),
             UiEvent::Api => self.take_api(),
+            UiEvent::ShelfTool => self.take_tools(),
             UiEvent::EffectsChanged => self.ui.morph.set_blur(effects_enabled()),
             UiEvent::Timer(TIMER_OUTSIDE) if !self.card_pinned && self.clicked_outside() => self.close_card(),
             UiEvent::Pill(PillEvent::Hover(over)) | UiEvent::Card(CardEvent::Hover(over)) => {
