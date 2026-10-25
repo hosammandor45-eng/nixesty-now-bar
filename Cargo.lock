@@ -2774,6 +2774,8 @@ dependencies = [
 name = "nowbar"
 version = "0.3.0"
 dependencies = [
+ "crc32fast",
+ "flate2",
  "nowbar-ui",
  "raw-window-handle",
  "serde",

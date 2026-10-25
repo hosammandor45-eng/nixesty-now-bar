@@ -28,6 +28,7 @@ use crate::render::card::{AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusi
 use crate::activities::brief::{date_line, day_key, due, first_name, greeting, pick_matches, rain_later, should_auto_open};
 use crate::platform::session::{brief_day, set_brief_day, windows_full_name};
 use crate::activities::shelf::{op_label, ops, Shelf, ShelfOp};
+use crate::activities::shelf_tools::{shrunk_name, unique_path, zip_name};
 use crate::activities::shelf_worker::{ShelfMailbox, ShelfWorker};
 use crate::activities::shelf_tools_worker::{Done as ToolDone, Job as ToolJob, ToolMailbox, ToolWorker, Why as ToolWhy};
 use crate::activities::football_worker::FootballWorker;
@@ -766,6 +767,8 @@ pub struct App {
     shelf_status: Option<(ShelfOp, String, u64)>,
     tool_worker: ToolWorker,
     tool_mailbox: ToolMailbox,
+    /// The files the shelf's tools made lately (the last 50).
+    shelf_made: Vec<PathBuf>,
     updater: Updater,
     update_mailbox: UpdateMailbox,
     /// A newer release the updater found (the tray offers it).
@@ -965,6 +968,7 @@ impl App {
             shelf_status: None,
             tool_worker,
             tool_mailbox,
+            shelf_made: Vec::new(),
             updater,
             update_mailbox,
             update_ready: updater_state().filter(|s| newer(&s.latest, VERSION)),
@@ -1880,6 +1884,9 @@ impl App {
     /// New screenshots: the newest shows in the pill; each goes onto the shelf (settings).
     fn take_captures(&mut self) -> Result<()> {
         let new: Vec<Capture> = self.capture_mailbox.lock().map(|mut m| std::mem::take(&mut *m)).unwrap_or_default();
+        // A picture the shelf shrunk into the Screenshots folder is no new screenshot.
+        let made = |p: &Path| self.shelf_made.iter().any(|m| m.as_os_str().eq_ignore_ascii_case(p.as_os_str()));
+        let new: Vec<Capture> = new.into_iter().filter(|c| !made(&c.path)).collect();
         let s = settings::current();
         for c in &new {
             log(&format!("capture: {} {}", c.path.display(), size_text(c.size)));
@@ -1995,7 +2002,6 @@ impl App {
     fn shelf_chips(&self) -> Vec<(ShelfOp, String)> {
         ops(&self.shelf.targets())
             .into_iter()
-            .filter(|op| matches!(op, ShelfOp::Share | ShelfOp::CopyText))
             .map(|op| match &self.shelf_status {
                 Some((done, text, _)) if *done == op => (op, text.clone()),
                 _ => (op, op_label(op).to_string()),
@@ -2026,8 +2032,35 @@ impl App {
                     self.tool_worker.send(ToolJob::Read(path));
                 }
             }
-            ShelfOp::Shrink | ShelfOp::Zip => {}
+            // Beside each picture; two that share a name ("a.png", "a.jpg") don't share a JPEG.
+            ShelfOp::Shrink => {
+                let mut pictures: Vec<(PathBuf, PathBuf)> = Vec::new();
+                for src in targets {
+                    let (Some(dir), Some(name)) = (src.parent(), src.file_name()) else { continue };
+                    let dest = unique_path(dir, &shrunk_name(&name.to_string_lossy()), |p| p.exists() || pictures.iter().any(|(_, d)| d == p));
+                    pictures.push((src.clone(), dest));
+                }
+                self.note_made(pictures.iter().map(|(_, d)| d.clone()));
+                self.shelf_status = Some((op, tr("Küçültülüyor…").to_string(), u64::MAX));
+                self.tool_worker.send(ToolJob::Shrink(pictures));
+            }
+            // Beside the newest, named after it, as Explorer's "Compress to ZIP file" does.
+            ShelfOp::Zip => {
+                let Some(newest) = targets.first() else { return };
+                let (Some(dir), Some(name)) = (newest.parent(), newest.file_name()) else { return };
+                let out = unique_path(dir, &zip_name(&name.to_string_lossy(), newest.is_dir(), targets.len()), Path::exists);
+                self.note_made([out.clone()]);
+                self.shelf_status = Some((op, tr("Sıkıştırılıyor…").to_string(), u64::MAX));
+                self.tool_worker.send(ToolJob::Zip { files: targets, out });
+            }
         }
+    }
+
+    /// Files a tool is about to make: the screenshot watcher isn't to take them for new ones.
+    fn note_made(&mut self, paths: impl IntoIterator<Item = PathBuf>) {
+        self.shelf_made.extend(paths);
+        let extra = self.shelf_made.len().saturating_sub(50);
+        self.shelf_made.drain(..extra);
     }
 
     /// What the shelf's tools finished: text onto the clipboard, the chip says how it went.
@@ -2048,11 +2081,36 @@ impl App {
                         self.shelf_say(ShelfOp::CopyText, tr("Kopyalanamadı"));
                     }
                 },
+                ToolDone::Made { op, files, not_smaller } if files.is_empty() => {
+                    self.shelf_say(op, if not_smaller > 0 { tr("Zaten küçük") } else { tr("Küçültülemedi") });
+                }
+                // Onto the shelf, selected: the footer now shares what was just made.
+                ToolDone::Made { op, files, not_smaller } => {
+                    log(&format!("shelf: {op:?} made {} file(s), {not_smaller} already small", files.len()));
+                    self.shelf.add(&files, |p| p.is_dir());
+                    self.shelf.select(&files);
+                    self.shelf_ms = now_ms();
+                    let side = self.ui.card_scale.px(75.0) as u32;
+                    for path in &files {
+                        self.shelf_thumbs.insert(path.clone(), None);
+                        self.shelf_worker.send(path.clone(), side);
+                    }
+                    self.forget_shelf_thumbs();
+                    let said = match op {
+                        ShelfOp::Zip => tr("Zip hazır").to_string(),
+                        _ if not_smaller > 0 => trf("{} küçültüldü", &[&files.len()]),
+                        _ => tr("Küçültüldü").to_string(),
+                    };
+                    self.shelf_say(op, &said);
+                }
                 ToolDone::Failed { op, why } => self.shelf_say(
                     op,
-                    match why {
-                        ToolWhy::NoRecognizer => tr("Metin tanıma yok"),
-                        ToolWhy::Unreadable => tr("Açılamadı"),
+                    match (op, why) {
+                        (_, ToolWhy::NoRecognizer) => tr("Metin tanıma yok"),
+                        (_, ToolWhy::TooBig) => tr("Zip için çok büyük"),
+                        (ShelfOp::Zip, _) => tr("Zip yapılamadı"),
+                        (ShelfOp::Shrink, _) => tr("Küçültülemedi"),
+                        _ => tr("Açılamadı"),
                     },
                 ),
             }

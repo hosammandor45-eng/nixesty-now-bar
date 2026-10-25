@@ -115,6 +115,12 @@ impl Shelf {
         }
     }
 
+    /// Only `paths` selected (those on the shelf): what a tool just made.
+    pub fn select(&mut self, paths: &[PathBuf]) {
+        let items = &self.items;
+        self.selected = paths.iter().filter(|p| items.iter().any(|i| key(&i.path) == key(p))).cloned().collect();
+    }
+
     pub fn is_selected(&self, i: usize) -> bool {
         self.items.get(i).is_some_and(|item| self.selected.iter().any(|p| key(p) == key(&item.path)))
     }
@@ -324,6 +330,17 @@ mod tests {
         assert!(!s.is_selected(0), "cleared with the shelf");
         s.toggle(9);
         assert!(s.targets().len() == 1, "no tile there");
+    }
+
+    #[test]
+    fn what_a_tool_made_comes_selected() {
+        let mut s = Shelf::default();
+        s.add(&files(&[r"C:\a.png", r"C:\b.png"]), no_dirs);
+        s.toggle(1);
+        s.add(&files(&[r"C:\a (küçük).jpg"]), no_dirs);
+        s.select(&files(&[r"C:\a (küçük).jpg", r"C:\yok.jpg"]));
+        let names: Vec<&str> = s.targets().iter().map(|i| i.name.as_str()).collect();
+        assert_eq!(names, ["a (küçük).jpg"], "the new one alone, ready to share");
     }
 
     #[test]

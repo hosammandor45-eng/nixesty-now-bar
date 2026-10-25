@@ -3201,3 +3201,47 @@ msgstr "No text recognition"
 #: src/app.rs
 msgid "Açılamadı"
 msgstr "Couldn't open"
+
+#: src/activities/shelf_tools.rs
+msgid "küçük"
+msgstr "small"
+
+#: src/activities/shelf_tools.rs
+msgid "{} ve {} dosya"
+msgstr "{} and {} more"
+
+#: src/app.rs
+msgid "Küçültülüyor…"
+msgstr "Shrinking…"
+
+#: src/app.rs
+msgid "Sıkıştırılıyor…"
+msgstr "Zipping…"
+
+#: src/app.rs
+msgid "Zaten küçük"
+msgstr "Already small"
+
+#: src/app.rs
+msgid "Küçültülemedi"
+msgstr "Couldn't shrink"
+
+#: src/app.rs
+msgid "Zip hazır"
+msgstr "Zip ready"
+
+#: src/app.rs
+msgid "{} küçültüldü"
+msgstr "{} shrunk"
+
+#: src/app.rs
+msgid "Küçültüldü"
+msgstr "Shrunk"
+
+#: src/app.rs
+msgid "Zip yapılamadı"
+msgstr "Couldn't zip"
+
+#: src/app.rs
+msgid "Zip için çok büyük"
+msgstr "Too big for a zip"

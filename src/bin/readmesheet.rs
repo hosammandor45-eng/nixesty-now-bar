@@ -112,7 +112,6 @@ fn shelf(n: usize, side: u32) -> ShelfCard {
         tiles.iter().map(|t| nowbar::activities::shelf::ShelfItem { path: format!(r"C:\Raf\{}", t.name).into(), name: t.name.clone(), kind: t.kind }).collect();
     let chips = nowbar::activities::shelf::ops(&items.iter().collect::<Vec<_>>())
         .into_iter()
-        .filter(|op| matches!(op, nowbar::activities::shelf::ShelfOp::Share | nowbar::activities::shelf::ShelfOp::CopyText))
         .map(|op| (op, nowbar::activities::shelf::op_label(op).to_string()))
         .collect();
     ShelfCard { tiles, hover: None, chips, said: None }

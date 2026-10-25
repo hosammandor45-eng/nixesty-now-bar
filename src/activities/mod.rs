@@ -31,6 +31,7 @@ pub mod weather_alert;
 pub mod weather_worker;
 pub mod wellbeing;
 pub mod wellbeing_worker;
+pub mod zip;
 
 use std::cmp::Reverse;
 

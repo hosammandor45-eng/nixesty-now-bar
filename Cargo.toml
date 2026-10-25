@@ -14,6 +14,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 slint = { version = "1.18", features = ["raw-window-handle-06", "software-renderer-systemfonts", "unstable-winit-030"] }
 raw-window-handle = "0.6"
+# Already in the tree under Slint's images; named here for the shelf's zip (UTF-8 names).
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+crc32fast = "1"
 windows-core = "0.62.2"
 # Already in the tree under windows; named here for IIterable (windows doesn't re-export it).
 windows-collections = "0.3"
