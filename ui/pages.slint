@@ -529,7 +529,7 @@ export component GeneralInspector inherits VerticalLayout {
         }
         IRow {
             label: @tr("Claude'a sor");
-            note: @tr("ya da pile Ctrl ile tıkla");
+            note: @tr("ya da Ctrl + pile tık");
             Select {
                 options: ["Win + Alt + C", "Win + Shift + C", @tr("Kapalı")];
                 selected <=> Store.question-hotkey;

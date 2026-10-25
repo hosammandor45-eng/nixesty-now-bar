@@ -3152,7 +3152,7 @@ msgstr "+{} more"
 
 #: ui/pages.slint
 msgid "Kilidi açınca, kilitliyken olanlar"
-msgstr "On unlocking, what happened while locked"
+msgstr "On unlock: what happened meanwhile"
 
 #: src/app.rs
 msgid "Paylaşılamadı"
@@ -3352,7 +3352,7 @@ msgstr "Show the progress"
 
 #: ui/pages.slint
 msgid "Explorer'ın penceresi küçültülse de"
-msgstr "Even with Explorer's window minimised"
+msgstr "Even with its window minimised"
 
 #: src/app.rs
 msgid "Claude Code bu bilgisayarda bulunamadı."
@@ -3403,5 +3403,5 @@ msgid "soru kartını açar"
 msgstr "opens the question card"
 
 #: ui/pages.slint
-msgid "ya da pile Ctrl ile tıkla"
-msgstr "or Ctrl and a click on the pill"
+msgid "ya da Ctrl + pile tık"
+msgstr "or Ctrl-click the pill"
