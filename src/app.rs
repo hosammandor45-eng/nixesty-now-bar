@@ -53,6 +53,8 @@ use crate::activities::island::{island_wants, on_island, ISLAND_MS};
 use crate::render::island::Island;
 use crate::activities::capture::{size_text, CAPTURE_MOMENT_MS};
 use crate::activities::away::{self, AwayItem, AwayKind, AwayLog, AwayReport, AWAY_MOMENT_MS};
+use crate::activities::music::{self, plays_text, week_caption, Listening, MusicLog};
+use crate::render::card::{MusicCard, MusicRow, MUSIC_ACCENT};
 use crate::activities::claude::{done_status, step_label, task_progress};
 use crate::platform::captures::{Capture, CaptureMailbox};
 use crate::activities::live::{live_key, pill_status, push_id_ok, AppIcon, AppMeta, LiveItem, LiveSet, LiveState};
@@ -77,7 +79,7 @@ use crate::platform::hotkey::register_hotkey;
 use crate::platform::dragdrop::{self, DropZone};
 use crate::platform::log::log;
 use crate::platform::taskbar::{self, ItemsMailbox};
-use crate::platform::tray::{MENU_WELLBEING, 
+use crate::platform::tray::{MENU_MUSIC, MENU_WELLBEING,
     create_tray, remove_tray, show_menu, MENU_AUTOSTART, MENU_BRIEF, MENU_MATCH_HIDE, MENU_MATCH_OPEN, MENU_QUIT, MENU_SETTINGS, MENU_STOPWATCH, MENU_TIMER, MENU_UPDATE,
 };
 use crate::platform::windows::{post_buds, post_effects_changed, post_matches, post_media, watch_foreground, CardEvent, CardWindow, MainWindow, PillEvent, PillWindow, UiEvent};
@@ -142,6 +144,11 @@ const BRIEF_IDLE_MS: u32 = 20_000;
 /// A slideshow changes the wallpaper without a broadcast: looked at this often.
 const TIMER_WALLPAPER: usize = 16;
 const WALLPAPER_EVERY_MS: u32 = 600_000;
+/// The week's music looks at the players this often (and whenever they change), and is written
+/// this often while something plays.
+const TIMER_MUSIC: usize = 17;
+const MUSIC_EVERY_MS: u32 = 30_000;
+const MUSIC_SAVE_MS: u64 = 300_000;
 const BAR_CHECK_MS: u32 = 2000;
 const METER_MS: u32 = 50;
 /// A goal moment plays this long; a red card or a disallowed goal shorter.
@@ -178,6 +185,8 @@ enum OpenCard {
     Wellbeing,
     /// What happened while the PC was locked.
     Away,
+    /// The week's music.
+    Music,
 }
 
 impl OpenCard {
@@ -738,6 +747,10 @@ pub struct App {
     wellbeing_box: WellbeingMailbox,
     usage_moment: Option<(String, u32, u64)>,
     app_icons: HashMap<PathBuf, Option<Crest>>,
+    /// The week's music: what played, the track being followed, when the file was last written.
+    music: MusicLog,
+    listening: Listening,
+    music_saved_ms: u64,
     /// "Sen yokken": what a lock notes, the last unlock's report and its moment's start (ms).
     away_log: AwayLog,
     away: Option<AwayReport>,
@@ -950,6 +963,9 @@ impl App {
             wellbeing_box,
             usage_moment: None,
             app_icons: HashMap::new(),
+            music: music::load(&music::path()),
+            listening: Listening::default(),
+            music_saved_ms: 0,
             away_log: AwayLog::default(),
             away: None,
             away_moment: None,
@@ -996,6 +1012,7 @@ impl App {
         app.try_auto_brief("start");
         unsafe { SetTimer(Some(app.main.hwnd), TIMER_BAR_CHECK, BAR_CHECK_MS, None) };
         unsafe { SetTimer(Some(app.main.hwnd), TIMER_WALLPAPER, WALLPAPER_EVERY_MS, None) };
+        unsafe { SetTimer(Some(app.main.hwnd), TIMER_MUSIC, MUSIC_EVERY_MS, None) };
         app.check_wallpaper();
         if let Some(old) = follow_exe() {
             log(&format!("autostart: now starts this copy (was {old})"));
@@ -1456,6 +1473,7 @@ impl App {
             week: week.map(|t| t as f32 / longest_day as f32),
             days: std::array::from_fn(|i| weekday(day - 6 + i as i64)),
             apps,
+            music: self.music_row(),
         }
     }
 
@@ -1666,6 +1684,7 @@ impl App {
             OpenCard::Brief => Some(CardContent::Brief(Box::new(self.brief_card(now)))),
             OpenCard::Wellbeing => Some(CardContent::Wellbeing(Box::new(self.wellbeing_card()))),
             OpenCard::Away => self.away.as_ref().map(|r| CardContent::Away(Box::new(self.away_card_shown(r)))),
+            OpenCard::Music => Some(CardContent::Music(Box::new(self.music_card()))),
             OpenCard::Activity(ActivityKind::Timer) => self.timer.as_ref().map(|slot| {
                 let state = slot.t.state(now);
                 let done = state == RunState::Done;
@@ -2654,6 +2673,7 @@ impl App {
                 self.stop_brief_idle();
                 self.open = Some(OpenCard::Away);
             }
+            CardAction::WellbeingMusic => self.open = Some(OpenCard::Music),
             CardAction::BriefPlay => {
                 if let Some(id) = self.brief_media().map(|m| m.id) {
                     self.media_worker.send(id, MediaCommand::PlayPause);
@@ -3259,9 +3279,56 @@ impl App {
                 }
             }
             self.ask_lyrics();
+            self.follow_music();
             self.refresh()?;
         }
         Ok(())
+    }
+
+    /// The week's music follows the player in front (what plays, not what's paused).
+    fn follow_music(&mut self) {
+        if !settings::current().music_week {
+            self.listening = Listening::default();
+            return;
+        }
+        let playing = self.brief_media().filter(|m| m.playing).map(|m| (m.title.clone(), m.artist.clone(), m.accent));
+        let day = local_day(unix_now(), tz_offset_s());
+        let added = self.music.observe(&mut self.listening, day, unix_now(), playing.as_ref().map(|(t, a, c)| (t.as_str(), a.as_str(), *c)));
+        if added && now_ms().saturating_sub(self.music_saved_ms) >= MUSIC_SAVE_MS {
+            self.save_music();
+        }
+    }
+
+    fn save_music(&mut self) {
+        self.music_saved_ms = now_ms();
+        if let Err(e) = music::save(&music::path(), &self.music) {
+            log(&format!("music: can't keep the week ({e})"));
+        }
+    }
+
+    /// The week's music card, up to today.
+    fn music_card(&self) -> MusicCard {
+        let day = local_day(unix_now(), tz_offset_s());
+        let (secs, plays) = self.music.week_total(day);
+        let tracks = self.music.top_tracks(day, 5);
+        let artists = self.music.top_artists(day, 3);
+        let rgb = |c: [u8; 3]| (c[0], c[1], c[2]);
+        MusicCard {
+            total: if secs == 0 { trf("{} dk", &[&0]) } else { played_text(secs as i64) },
+            caption: week_caption(plays, artists.first().map(|(a, _)| a.as_str())),
+            accent: tracks.first().map_or(MUSIC_ACCENT, |t| rgb(t.accent)),
+            tracks: tracks.iter().map(|t| MusicRow { title: t.title.clone(), artist: t.artist.clone(), plays: plays_text(t.plays), accent: rgb(t.accent) }).collect(),
+            artists: artists.into_iter().map(|(a, s)| (a, played_text(s as i64))).collect(),
+        }
+    }
+
+    /// Dijital Denge's row for the week's music: how long, and the track played most.
+    fn music_row(&self) -> Option<(String, String)> {
+        let day = local_day(unix_now(), tz_offset_s());
+        let (secs, _) = self.music.week_total(day);
+        let top = self.music.top_tracks(day, 1).into_iter().next()?;
+        let sub = if top.artist.trim().is_empty() { top.title } else { format!("{} · {}", top.title, top.artist) };
+        (settings::current().music_week && secs > 0).then(|| (trf("Haftanın müziği · {}", &[&played_text(secs as i64)]), sub))
     }
 
     /// The output's volume changed: the level shows in the pill for a moment, unless the
@@ -3697,6 +3764,7 @@ impl App {
             }
             MENU_BRIEF => self.open_card(OpenCard::Brief, false),
             MENU_WELLBEING => self.open_card(OpenCard::Wellbeing, false),
+            MENU_MUSIC => self.open_card(OpenCard::Music, false),
             MENU_TIMER => {
                 self.picker.stopwatch_tab = false;
                 self.open_card(OpenCard::Picker, false)
@@ -3990,6 +4058,10 @@ impl App {
                 self.check_wallpaper();
                 Ok(())
             }
+            UiEvent::Timer(TIMER_MUSIC) => {
+                self.follow_music();
+                Ok(())
+            }
             UiEvent::Wallpaper => self.repaint(),
             UiEvent::Games => self.take_games(),
             UiEvent::Wellbeing => self.take_wellbeing(),
@@ -4165,6 +4237,7 @@ impl App {
 impl Drop for App {
     fn drop(&mut self) {
         remove_tray(self.main.hwnd);
+        self.save_music();
     }
 }
 
@@ -4199,6 +4272,10 @@ mod tests {
         let card = AwayCard { span: "14:02 – 17:14 · 3 sa 12 dk".into(), rows: (0..away::CARD_ROWS).map(|_| row()).collect(), more: 14 };
         let (w, h) = card_size_dip(&CardContent::Away(Box::new(card)));
         assert!(w <= CARD_FRAME_W_DIP && h <= CARD_FRAME_H_DIP, "a full away card is {w}×{h}");
+        let track = || MusicRow { title: "t".into(), artist: "a".into(), plays: "12 kez".into(), accent: (0, 0, 0) };
+        let week = MusicCard { total: "6 sa".into(), caption: String::new(), tracks: (0..5).map(|_| track()).collect(), artists: vec![(String::new(), String::new()); 3], accent: (0, 0, 0) };
+        let (w, h) = card_size_dip(&CardContent::Music(Box::new(week)));
+        assert!(w <= CARD_FRAME_W_DIP && h <= CARD_FRAME_H_DIP, "a full week's music is {w}×{h}");
     }
 
     #[test]

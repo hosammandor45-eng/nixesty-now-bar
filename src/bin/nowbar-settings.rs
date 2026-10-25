@@ -489,6 +489,7 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_island_on(s.island_on);
     st.set_wellbeing_on(s.wellbeing_on);
     st.set_wellbeing_in_brief(s.wellbeing_in_brief);
+    st.set_music_week(s.music_week);
     st.set_wellbeing_limit_moments(s.wellbeing_limit_moments);
     show_usage(&st, s);
     st.set_power_low(s.power_low_pct as f32);
@@ -599,6 +600,7 @@ fn read(ui: &SettingsWindow, base: &Settings) -> Settings {
         island_on: st.get_island_on(),
         wellbeing_on: st.get_wellbeing_on(),
         wellbeing_in_brief: st.get_wellbeing_in_brief(),
+        music_week: st.get_music_week(),
         wellbeing_limit_moments: st.get_wellbeing_limit_moments(),
         power_low_pct: st.get_power_low().round() as u8,
         privacy_on: st.get_privacy_on(),

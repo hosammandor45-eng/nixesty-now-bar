@@ -257,6 +257,8 @@ pub struct Settings {
     pub wellbeing_in_brief: bool,
     /// An app past its limit shows a moment.
     pub wellbeing_limit_moments: bool,
+    /// What plays is counted (kept on this PC, a week) for the week's music.
+    pub music_week: bool,
     pub wellbeing_limits: Vec<AppLimit>,
     /// How long the hook waits for the card's answer before Claude's own dialog takes over (10–300 s).
     pub claude_ask_wait_s: u32,
@@ -362,6 +364,7 @@ impl Default for Settings {
             wellbeing_on: true,
             wellbeing_in_brief: true,
             wellbeing_limit_moments: true,
+            music_week: true,
             wellbeing_limits: Vec::new(),
             update_check: true,
             fullscreen_hide: true,
@@ -735,6 +738,12 @@ mod tests {
         assert!(old.wellbeing_on && old.wellbeing_in_brief && old.wellbeing_limit_moments && old.wellbeing_limits.is_empty());
         let s = parse(r#"{"wellbeing_limits": [{"exe": "Discord.exe", "minutes": 120}, {"exe": "x.exe", "minutes": 0}, {"exe": "y.exe", "minutes": 99999}]}"#);
         assert_eq!(s.wellbeing_limits, vec![AppLimit { exe: "Discord.exe".into(), minutes: 120 }, AppLimit { exe: "y.exe".into(), minutes: 1440 }]);
+    }
+
+    #[test]
+    fn the_weeks_music_counts_by_default() {
+        let old: Settings = serde_json::from_str(r#"{"enabled": true}"#).unwrap();
+        assert!(old.music_week, "an older file: what plays is counted, on this PC");
     }
 
     #[test]

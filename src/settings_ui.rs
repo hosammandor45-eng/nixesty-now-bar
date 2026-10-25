@@ -115,6 +115,7 @@ pub const INDEX: &[Entry] = &[
     e(10, "wellbeing-on", n_("Dijital Denge"), n_("Ekran süresi"), n_("Hangi uygulamanın ne kadar önde kaldığı; bu bilgisayarda kalır"), "ekran süresi dijital denge kullanım uygulama süre screen time"),
     e(10, "wellbeing-in-brief", n_("Dijital Denge"), n_("Now Brief'te göster"), n_("Brief'te dünün ya da bugünün ekran süresi"), "brief ekran süresi sabah"),
     e(10, "wellbeing-limits", n_("Sınırlar"), n_("Uygulama sınırları"), n_("Bir uygulama günlük sınırını geçince pilde bir an"), "sınır limit süre uyarı discord oyun mola"),
+    e(10, "music-week", n_("Müzik"), n_("Haftanın müziği"), n_("En çok dinlenen şarkılar ve sanatçılar; çalanlar bu bilgisayarda sayılır, internete gitmez"), "müzik şarkı sanatçı haftalık özet wrapped spotify en çok dinlenen"),
     e(8, "weather-locate", n_("Saat ve hava"), n_("Konumumu kullan"), n_("Şehir seçilmemişse hava bilgisayarın bulunduğu yerin; konum Windows'tan, yer adı OpenStreetMap'ten"), "konum otomatik yer neredeyim gps location"),
     e(8, "weather-city", n_("Saat ve hava"), n_("Hava için şehir"), n_("Sıcaklık ve gökyüzü bu şehrin; veriler Open-Meteo'dan gelir"), "şehir il konum hava durumu sıcaklık derece weather"),
 ];

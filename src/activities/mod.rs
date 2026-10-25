@@ -12,6 +12,7 @@ pub mod capture;
 pub mod claude;
 pub mod media;
 pub mod media_worker;
+pub mod music;
 pub mod football;
 pub mod football_worker;
 pub mod games;

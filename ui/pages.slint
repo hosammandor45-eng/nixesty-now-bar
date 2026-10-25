@@ -2157,4 +2157,15 @@ export component WellbeingInspector inherits VerticalLayout {
             }
         }
     }
+    ISection {
+        title: @tr("Müzik");
+        IRow {
+            label: @tr("Haftanın müziği");
+            note: @tr("Çalanlar bu bilgisayarda sayılır");
+            Toggle {
+                checked <=> Store.music-week;
+                toggled => { Ui.changed(); }
+            }
+        }
+    }
 }

@@ -269,6 +269,7 @@ pub enum CardContent {
     Game(Box<GameCard>),
     Wellbeing(Box<WellbeingCard>),
     Away(Box<AwayCard>),
+    Music(Box<MusicCard>),
 }
 
 /// "Sen yokken": what happened while the PC was locked.
@@ -315,6 +316,44 @@ pub struct WellbeingCard {
     pub days: [&'static str; 7],
     /// At most five.
     pub apps: Vec<WellbeingApp>,
+    /// The week's music row: ("Müzik · 6 sa 20 dk", "Şımarık · Tarkan"), its card behind it.
+    pub music: Option<(String, String)>,
+}
+
+/// The week's music: how long, the tracks played most, the artists listened to longest.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MusicCard {
+    /// "6 sa 20 dk"
+    pub total: String,
+    /// "142 parça · en çok Tarkan"
+    pub caption: String,
+    /// At most five, most played first.
+    pub tracks: Vec<MusicRow>,
+    /// At most three: (name, "2 sa 10 dk").
+    pub artists: Vec<(String, String)>,
+    /// The top track's cover colour (the mark's).
+    pub accent: (u8, u8, u8),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MusicRow {
+    pub title: String,
+    pub artist: String,
+    /// "12 kez"
+    pub plays: String,
+    pub accent: (u8, u8, u8),
+}
+
+/// Music's colour: the shelf's audio files' pink.
+pub const MUSIC_ACCENT: (u8, u8, u8) = (0xFF, 0x5E, 0x8A);
+
+// The music card's parts (DIP): a track's row, an artist's.
+const MUSIC_ROW: f32 = 44.0;
+const ARTIST_ROW: f32 = 40.0;
+
+fn music_height_dip(c: &MusicCard) -> f32 {
+    let artists = if c.artists.is_empty() { 0.0 } else { BRIEF_GAP + 16.0 + c.artists.len() as f32 * ARTIST_ROW };
+    WELL_HEADER + 16.0 + c.tracks.len().max(1) as f32 * MUSIC_ROW + artists + 12.0
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -333,7 +372,8 @@ const WELL_WEEK: f32 = 104.0;
 const WELL_ROW: f32 = 40.0;
 
 fn wellbeing_height_dip(c: &WellbeingCard) -> f32 {
-    WELL_HEADER + WELL_WEEK + 10.0 + c.apps.len().max(1) as f32 * WELL_ROW + 14.0
+    let music = if c.music.is_some() { BRIEF_GAP + BRIEF_MUSIC } else { 0.0 };
+    WELL_HEADER + WELL_WEEK + 10.0 + c.apps.len().max(1) as f32 * WELL_ROW + music + 14.0
 }
 
 /// A Steam or Epic game's card: the box art, the store, the title, what it does and the figures.
@@ -655,6 +695,8 @@ pub enum CardAction {
     BriefScreen,
     /// The brief's "Sen yokken" row: the away card.
     BriefAway,
+    /// Dijital Denge's music row: the week's music card.
+    WellbeingMusic,
 }
 
 /// Card size in DIP.
@@ -688,6 +730,7 @@ pub fn card_size_dip(c: &CardContent) -> (f32, f32) {
         CardContent::Game(_) => (370.0, GAME_COVER_DIP.1 + 48.0),
         CardContent::Wellbeing(c) => (370.0, wellbeing_height_dip(c)),
         CardContent::Away(c) => (370.0, BRIEF_HEADER + BRIEF_GAP + away_panel_dip(c) + 12.0),
+        CardContent::Music(c) => (370.0, music_height_dip(c)),
     }
 }
 
@@ -744,7 +787,8 @@ pub fn card_radius_dip(c: &CardContent) -> f32 {
         | CardContent::Brief(_)
         | CardContent::Game(_)
         | CardContent::Wellbeing(_)
-        | CardContent::Away(_) => 36.0,
+        | CardContent::Away(_)
+        | CardContent::Music(_) => 36.0,
         CardContent::Media(_) | CardContent::Match(_) => 32.0,
     }
 }
@@ -790,6 +834,7 @@ pub fn card_accent(c: &CardContent) -> (u8, u8, u8) {
         CardContent::Match(m) => (m.home.palette.tint[0], m.home.palette.tint[1], m.home.palette.tint[2]),
         CardContent::Game(g) => store_accent(g.store),
         CardContent::Wellbeing(_) => WELLBEING_ACCENT,
+        CardContent::Music(c) => c.accent,
     }
 }
 
@@ -897,6 +942,7 @@ pub fn paint_card(ink: &Ink, c: &CardContent, s: &Scale, w: f32, h: f32) -> Resu
         CardContent::Game(g) => p.game(g),
         CardContent::Wellbeing(c) => p.wellbeing(c),
         CardContent::Away(c) => p.away(c),
+        CardContent::Music(c) => p.music(c),
     }?;
     Ok(out)
 }
@@ -1899,6 +1945,73 @@ impl Painter<'_, '_> {
             self.ink.rrect(rect(x, d(y + 27.0), (track * a.share.clamp(0.0, 1.0)).max(line), line), line / 2.0, green)?;
             y += WELL_ROW;
         }
+        // The week's music, as the brief's links: the note where the cover would be.
+        if let Some((head, sub)) = &c.music {
+            let y = WELL_HEADER + WELL_WEEK + 10.0 + c.apps.len().max(1) as f32 * WELL_ROW + BRIEF_GAP;
+            self.brief_link(y, MUSIC_ACCENT, &glyph(Icon::Music).to_string(), (head, sub), CardAction::WellbeingMusic)?;
+        }
+        Ok(())
+    }
+
+    /// The week's music: how long, with the top track's colour on the mark; the tracks played
+    /// most (their place, their cover's colour, title and artist, plays); the artists listened to
+    /// longest.
+    fn music(&mut self, c: &MusicCard) -> Result<()> {
+        let d = |v: f32| v * self.s.0;
+        let label = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.6)).top();
+        self.ink.text(tr("Bu hafta"), rect(d(20.0), d(20.0), d(200.0), d(18.0)), &label)?;
+        let total = TextStyle::new(Face::Display, Weight::Bold, d(30.0), white(1.0)).top().tabular();
+        self.ink.text(&c.total, rect(d(20.0), d(38.0), self.w - d(100.0), d(40.0)), &total)?;
+        let caption = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).top().ellipsis();
+        self.ink.text(&c.caption, rect(d(20.0), d(76.0), self.w - d(40.0), d(18.0)), &caption)?;
+        let mark = rect(self.w - d(20.0) - d(40.0), d(22.0), d(40.0), d(40.0));
+        let (r, g, b) = c.accent;
+        self.ink.rrect(mark, d(20.0), rgba(r, g, b, 1.0))?;
+        self.ink.text(&glyph(Icon::Music).to_string(), mark, &TextStyle::new(Face::Icons, Weight::Regular, d(19.0), white(1.0)).centered())?;
+
+        let right = self.w - d(28.0);
+        let small = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).trailing().tabular();
+        let name = TextStyle::new(Face::Text, Weight::SemiBold, d(13.0), white(1.0)).top().ellipsis();
+        let tracks_h = 16.0 + c.tracks.len().max(1) as f32 * MUSIC_ROW;
+        self.ink.rrect(rect(d(12.0), d(WELL_HEADER), self.w - d(24.0), d(tracks_h)), d(24.0), white(0.06))?;
+        let mut y = WELL_HEADER + 8.0;
+        if c.tracks.is_empty() {
+            self.ink.text(tr("Bu hafta henüz müzik yok"), rect(d(24.0), d(y), self.w - d(48.0), d(MUSIC_ROW)), &TextStyle::new(Face::Text, Weight::Regular, d(13.0), white(0.6)))?;
+        }
+        let side = d(28.0).round();
+        for (i, t) in c.tracks.iter().enumerate() {
+            let rank = TextStyle::new(Face::Text, Weight::SemiBold, d(13.0), white(0.5)).centered().tabular();
+            self.ink.text(&(i + 1).to_string(), rect(d(20.0), d(y), d(18.0), d(MUSIC_ROW)), &rank)?;
+            let dot = rect(d(46.0).round(), (d(y + MUSIC_ROW / 2.0) - side / 2.0).round(), side, side);
+            let (r, g, b) = t.accent;
+            self.ink.rrect(dot, side / 2.0, rgba(r, g, b, 1.0))?;
+            self.ink.text(&glyph(Icon::Music).to_string(), dot, &TextStyle::new(Face::Icons, Weight::Regular, side * 0.5, white(1.0)).centered())?;
+            let pw = self.ink.measure(&t.plays, &small)? + d(1.0);
+            self.ink.text(&t.plays, rect(right - pw, d(y), pw, d(MUSIC_ROW)), &small)?;
+            let (x, text_w) = (d(86.0), right - pw - d(12.0) - d(86.0));
+            self.ink.text(&t.title, rect(x, d(y + 5.0), text_w, d(18.0)), &name)?;
+            self.ink.text(&t.artist, rect(x, d(y + 23.0), text_w, d(16.0)), &TextStyle::new(Face::Text, Weight::Regular, d(12.0), white(0.7)).top().ellipsis())?;
+            y += MUSIC_ROW;
+        }
+        if c.artists.is_empty() {
+            return Ok(());
+        }
+        let top = WELL_HEADER + tracks_h + BRIEF_GAP;
+        self.ink.rrect(rect(d(12.0), d(top), self.w - d(24.0), d(16.0 + c.artists.len() as f32 * ARTIST_ROW)), d(24.0), white(0.06))?;
+        let mut y = top + 8.0;
+        let one_line = TextStyle::new(Face::Text, Weight::SemiBold, d(13.0), white(1.0)).ellipsis();
+        for (i, (artist, time)) in c.artists.iter().enumerate() {
+            let rank = TextStyle::new(Face::Text, Weight::SemiBold, d(13.0), white(0.5)).centered().tabular();
+            self.ink.text(&(i + 1).to_string(), rect(d(20.0), d(y), d(18.0), d(ARTIST_ROW)), &rank)?;
+            let dot = rect(d(46.0).round(), (d(y + ARTIST_ROW / 2.0) - side / 2.0).round(), side, side);
+            self.ink.rrect(dot, side / 2.0, white(0.12))?;
+            let letter: String = artist.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
+            self.ink.text(&letter, dot, &TextStyle::new(Face::Text, Weight::SemiBold, d(12.0), white(0.9)).centered())?;
+            let tw = self.ink.measure(time, &small)? + d(1.0);
+            self.ink.text(time, rect(right - tw, d(y), tw, d(ARTIST_ROW)), &small)?;
+            self.ink.text(artist, rect(d(86.0), d(y), right - tw - d(12.0) - d(86.0), d(ARTIST_ROW)), &one_line)?;
+            y += ARTIST_ROW;
+        }
         Ok(())
     }
 
@@ -2334,6 +2447,32 @@ mod tests {
         let h = |b: BriefCard| card_size_dip(&CardContent::Brief(Box::new(b))).1;
         let back = BriefCard { away: Some(("Sen yokken · 4 şey".into(), "Claude bitti · now-bar".into())), ..brief(false, false, 0, false, false) };
         assert_eq!(h(back), 84.0 + 68.0);
+    }
+
+    #[test]
+    fn the_weeks_music_is_as_tall_as_its_rows() {
+        let row = || MusicRow { title: "t".into(), artist: "a".into(), plays: "3 kez".into(), accent: (0, 0, 0) };
+        let card = |tracks: usize, artists: usize| {
+            CardContent::Music(Box::new(MusicCard {
+                total: String::new(),
+                caption: String::new(),
+                tracks: (0..tracks).map(|_| row()).collect(),
+                artists: (0..artists).map(|_| (String::new(), String::new())).collect(),
+                accent: (0, 0, 0),
+            }))
+        };
+        assert_eq!(card_size_dip(&card(0, 0)).1, 100.0 + 16.0 + 44.0 + 12.0, "the empty week's line");
+        assert_eq!(card_size_dip(&card(5, 3)).1, 100.0 + 16.0 + 5.0 * 44.0 + 8.0 + 16.0 + 3.0 * 40.0 + 12.0);
+        let well = |music: bool| WellbeingCard {
+            total: String::new(),
+            caption: String::new(),
+            week: [0.0; 7],
+            days: [""; 7],
+            apps: vec![],
+            music: music.then(|| ("Haftanın müziği · 6 sa".into(), "t · a".into())),
+        };
+        let h = |c: WellbeingCard| card_size_dip(&CardContent::Wellbeing(Box::new(c))).1;
+        assert_eq!(h(well(true)) - h(well(false)), 68.0, "the music row: the brief's link shape");
     }
 
     #[test]

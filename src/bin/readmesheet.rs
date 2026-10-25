@@ -277,6 +277,7 @@ fn main() -> Result<()> {
                 .into_iter()
                 .map(|(name, time, share)| WellbeingApp { name: name.into(), icon: None, time: time.into(), share })
                 .collect(),
+            music: None,
         })),
         &s,
     )?;

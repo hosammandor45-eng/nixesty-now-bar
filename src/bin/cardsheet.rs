@@ -5,7 +5,7 @@ use nowbar::activities::buds::{BudsSnapshot, NoiseControl};
 use nowbar::activities::media::{Caps, MediaSnapshot, Timeline};
 use nowbar::platform::audio::{list_outputs, output_volume, picker_order, OutputBus, OutputKind};
 use nowbar::activities::live::{AppIcon, LiveState};
-use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
+use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, MusicCard, MusicRow, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
 use nowbar::activities::games::Store;
 use nowbar::activities::shelf::{file_kind, op_label, ops, ShelfItem, ShelfOp};
 use nowbar::activities::claude::StepKind;
@@ -292,6 +292,23 @@ fn main() -> Result<()> {
                 .into_iter()
                 .map(|(name, time, share)| WellbeingApp { name: name.into(), icon: None, time: time.into(), share })
                 .collect(),
+            music: Some(("Haftanın müziği · 6 sa 20 dk".into(), "Gece Yarısı Treni · Deniz Kaya".into())),
+        })),
+        CardContent::Music(Box::new(MusicCard {
+            total: "6 sa 20 dk".into(),
+            caption: nowbar::activities::music::week_caption(142, Some("Deniz Kaya")),
+            tracks: [
+                ("Gece Yarısı Treni", "Deniz Kaya", 14, (0x1D, 0xB9, 0x54)),
+                ("Sabah Olunca", "Gece Yolcuları", 11, (0xE8, 0x6A, 0x3A)),
+                ("Mavi Kapılar", "Ekin & Lale", 9, (0x2F, 0x80, 0xED)),
+                ("Uzun Bir Şarkının Gerçekten Çok Uzun Adı (Akustik Versiyon)", "Deniz Kaya", 7, (0x9B, 0x6B, 0xFF)),
+                ("Kuzey", "Lale", 1, (0x8A, 0x93, 0xB4)),
+            ]
+            .into_iter()
+            .map(|(title, artist, plays, accent)| MusicRow { title: title.into(), artist: artist.into(), plays: nowbar::activities::music::plays_text(plays), accent })
+            .collect(),
+            artists: vec![("Deniz Kaya".into(), "2 sa 10 dk".into()), ("Gece Yolcuları".into(), "1 sa 5 dk".into()), ("Ekin".into(), "48 dk".into())],
+            accent: (0x1D, 0xB9, 0x54),
         })),
         CardContent::Away(Box::new(away_card())),
         game_card(Store::Steam, "THE FINALS", r"C:\Program Files (x86)\Steam\appcache\librarycache\2073850\6d9cfdeaea9f822d8f4af42d8f0dbd083e81f64e\library_capsule.jpg", "İndiriliyor · %48", "1,2 GB / 2,5 GB · 18 MB/sn · ~2 dk kaldı", Some(0.48), &s),

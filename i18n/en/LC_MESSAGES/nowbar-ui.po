@@ -3261,3 +3261,47 @@ msgstr "Lyrics"
 #: ui/pages.slint
 msgid "Adın yerine o anki satır"
 msgstr "The line on, in the title's place"
+
+#: src/app.rs
+msgid "Haftanın müziği · {}"
+msgstr "The week's music · {}"
+
+#: src/settings_ui.rs
+msgid "Haftanın müziği"
+msgstr "The week's music"
+
+#: src/settings_ui.rs
+msgid "En çok dinlenen şarkılar ve sanatçılar; çalanlar bu bilgisayarda sayılır, internete gitmez"
+msgstr "The tracks and artists played most; counted on this PC, nothing goes online"
+
+#: src/activities/music.rs
+msgid "1 kez"
+msgstr "1 play"
+
+#: src/activities/music.rs
+msgid "{} kez"
+msgstr "{} plays"
+
+#: src/activities/music.rs
+msgid "1 parça"
+msgstr "1 track"
+
+#: src/activities/music.rs
+msgid "{} parça"
+msgstr "{} tracks"
+
+#: src/activities/music.rs
+msgid "{} · en çok {}"
+msgstr "{} · mostly {}"
+
+#: src/render/card.rs
+msgid "Bu hafta"
+msgstr "This week"
+
+#: src/render/card.rs
+msgid "Bu hafta henüz müzik yok"
+msgstr "No music yet this week"
+
+#: ui/pages.slint
+msgid "Çalanlar bu bilgisayarda sayılır"
+msgstr "Counted on this PC"
