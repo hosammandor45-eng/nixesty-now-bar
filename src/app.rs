@@ -27,7 +27,7 @@ use crate::render::pill::{MatchPill, MomentKind, PillMoment, PillTeam, PillThumb
 use crate::render::card::{AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardTeam, ClaudeAsk, ClaudeCard, GameCard, LiveCard, MatchCard, ShelfCard, ShelfTile, WeatherCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP, LYRIC_MOVE_MS};
 use crate::activities::brief::{date_line, day_key, due, first_name, greeting, pick_matches, rain_later, should_auto_open};
 use crate::platform::session::{brief_day, set_brief_day, windows_full_name};
-use crate::activities::shelf::Shelf;
+use crate::activities::shelf::{op_label, ops, Shelf, ShelfOp};
 use crate::activities::shelf_worker::{ShelfMailbox, ShelfWorker};
 use crate::activities::football_worker::FootballWorker;
 use crate::activities::basketball_worker::BasketballWorker;
@@ -155,6 +155,8 @@ const PAGE_SLIDE_DIP: f32 = 24.0;
 const TINT_FADE_MS: i64 = 250;
 /// The media card's position and wave move at 4 Hz while playing.
 const MEDIA_CARD_TICK_MS: u64 = 250;
+/// A shelf chip's result stays in its place this long.
+const SHELF_SAY_MS: u64 = 2500;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CardState {
@@ -759,6 +761,8 @@ pub struct App {
     shelf_hover: Option<usize>,
     /// The tile the left button went down on, and where.
     tile_press: Option<(usize, i32, i32)>,
+    /// A footer chip's result shown in its place, until when (ms; `u64::MAX` while it works).
+    shelf_status: Option<(ShelfOp, String, u64)>,
     updater: Updater,
     update_mailbox: UpdateMailbox,
     /// A newer release the updater found (the tray offers it).
@@ -953,6 +957,7 @@ impl App {
             pill_drag_ms: 0,
             shelf_hover: None,
             tile_press: None,
+            shelf_status: None,
             updater,
             update_mailbox,
             update_ready: updater_state().filter(|s| newer(&s.latest, VERSION)),
@@ -1691,9 +1696,10 @@ impl App {
                     .shelf
                     .items()
                     .iter()
-                    .map(|i| ShelfTile { name: i.name.clone(), thumb: self.shelf_thumbs.get(&i.path).cloned().flatten(), kind: i.kind })
+                    .enumerate()
+                    .map(|(n, i)| ShelfTile { name: i.name.clone(), thumb: self.shelf_thumbs.get(&i.path).cloned().flatten(), kind: i.kind, selected: self.shelf.is_selected(n) })
                     .collect();
-                CardContent::Shelf(ShelfCard { tiles, hover: self.shelf_hover })
+                CardContent::Shelf(ShelfCard { tiles, hover: self.shelf_hover, chips: self.shelf_chips() })
             }),
             OpenCard::Activity(ActivityKind::Game(key)) => self.game_card(key, now).map(|c| CardContent::Game(Box::new(c))),
             OpenCard::Activity(ActivityKind::Clock | ActivityKind::Weather) => self.weather_card().map(|c| CardContent::Weather(Box::new(c))),
@@ -1977,6 +1983,43 @@ impl App {
         self.refresh()
     }
 
+    /// The shelf footer's chips for the selection (or everything): each op's label, or its result
+    /// while that shows.
+    fn shelf_chips(&self) -> Vec<(ShelfOp, String)> {
+        ops(&self.shelf.targets())
+            .into_iter()
+            .filter(|op| matches!(op, ShelfOp::Share))
+            .map(|op| match &self.shelf_status {
+                Some((done, text, _)) if *done == op => (op, text.clone()),
+                _ => (op, op_label(op).to_string()),
+            })
+            .collect()
+    }
+
+    /// A shelf footer chip: the targets' files go to Windows' share sheet.
+    fn shelf_tool(&mut self, op: ShelfOp) {
+        let targets: Vec<PathBuf> = self.shelf.targets().iter().map(|i| i.path.clone()).collect();
+        match op {
+            ShelfOp::Share => {
+                let files: Vec<PathBuf> = targets.into_iter().filter(|p| p.is_file()).collect();
+                let title = match files.as_slice() {
+                    [one] => one.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned()),
+                    many => trf("{} dosya", &[&many.len()]),
+                };
+                if let Err(e) = crate::platform::share::share_files(self.ui.card_window.hwnd, &files, &title) {
+                    log(&format!("shelf: share failed ({e})"));
+                    self.shelf_say(op, tr("Paylaşılamadı"));
+                }
+            }
+            ShelfOp::CopyText | ShelfOp::Shrink | ShelfOp::Zip => {}
+        }
+    }
+
+    /// A chip's result in place of its label for a few seconds.
+    fn shelf_say(&mut self, op: ShelfOp, text: &str) {
+        self.shelf_status = Some((op, text.to_string(), now_ms() + SHELF_SAY_MS));
+    }
+
     /// Previews of items no longer on the shelf.
     fn forget_shelf_thumbs(&mut self) {
         let shelf = &self.shelf;
@@ -2059,6 +2102,9 @@ impl App {
         self.live.expire(now, open_live);
         self.api.expire(&mut self.live, now);
         self.next_alert(now);
+        if self.shelf_status.as_ref().is_some_and(|(_, _, until)| now >= *until) {
+            self.shelf_status = None;
+        }
         let open_done_card = self.check_done(now);
         if let Some((kind, _)) = self.user_front {
             if !self.presences(now).iter().any(|p| p.kind == kind) {
@@ -2341,6 +2387,12 @@ impl App {
                 sooner(AWAY_MOMENT_MS - age + 5);
             }
         }
+        // A shelf chip's result gives its label back (one still working waits for its answer).
+        if let Some((_, _, until)) = &self.shelf_status {
+            if *until != u64::MAX {
+                sooner(until.saturating_sub(now) + 5);
+            }
+        }
         // The island goes back up when its seconds are over.
         if self.ui.island.as_ref().is_some_and(|i| i.is_shown()) {
             if let Some(end) = self.stack.first().and_then(|k| self.island_since(*k)).map(|since| since + ISLAND_MS) {
@@ -2592,6 +2644,7 @@ impl App {
                 self.shelf_hover = None;
                 self.forget_shelf_thumbs();
             }
+            CardAction::ShelfTool(op) => self.shelf_tool(op),
             CardAction::OutputSettings => {
                 unsafe {
                     windows::Win32::UI::Shell::ShellExecuteW(
@@ -3872,6 +3925,14 @@ impl App {
                 let hover = self.ui.card.tile_at(x, y);
                 if hover != self.shelf_hover {
                     self.shelf_hover = hover;
+                    return self.refresh();
+                }
+                Ok(())
+            }
+            // A tile pressed and let go where it was (no drag): selected for the footer, or let go.
+            UiEvent::Card(CardEvent::Up { x, y }) if self.open == Some(OpenCard::Activity(ActivityKind::Shelf)) && self.ui.card.hit_test(x, y).is_none() => {
+                if let Some((i, _, _)) = self.tile_press.take().filter(|(i, _, _)| self.ui.card.tile_at(x, y) == Some(*i)) {
+                    self.shelf.toggle(i);
                     return self.refresh();
                 }
                 Ok(())

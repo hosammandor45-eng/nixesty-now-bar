@@ -2,6 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::i18n::tr;
+
 /// A 13th item pushes the oldest out (three rows of four on the card).
 pub const SHELF_MAX: usize = 12;
 
@@ -61,6 +63,8 @@ pub fn extension_label(name: &str) -> Option<String> {
 pub struct Shelf {
     /// Newest first: the grid's order, and `items[0]` is the pill's thumbnail.
     items: Vec<ShelfItem>,
+    /// The tiles clicked for the footer's chips, by path (a drop moves them down the grid).
+    selected: Vec<PathBuf>,
 }
 
 /// Windows paths compare without case and either separator.
@@ -90,12 +94,35 @@ impl Shelf {
 
     pub fn remove(&mut self, i: usize) {
         if i < self.items.len() {
-            self.items.remove(i);
+            let gone = self.items.remove(i);
+            self.selected.retain(|p| key(p) != key(&gone.path));
         }
     }
 
     pub fn clear(&mut self) {
         self.items.clear();
+        self.selected.clear();
+    }
+
+    /// A click on tile `i`: selected, or let go.
+    pub fn toggle(&mut self, i: usize) {
+        let Some(item) = self.items.get(i) else { return };
+        let k = key(&item.path);
+        if self.selected.iter().any(|p| key(p) == k) {
+            self.selected.retain(|p| key(p) != k);
+        } else {
+            self.selected.push(item.path.clone());
+        }
+    }
+
+    pub fn is_selected(&self, i: usize) -> bool {
+        self.items.get(i).is_some_and(|item| self.selected.iter().any(|p| key(p) == key(&item.path)))
+    }
+
+    /// What the footer acts on: the selected items, or all of them with none selected; newest first.
+    pub fn targets(&self) -> Vec<&ShelfItem> {
+        let picked: Vec<&ShelfItem> = (0..self.items.len()).filter(|i| self.is_selected(*i)).map(|i| &self.items[i]).collect();
+        if picked.is_empty() { self.items.iter().collect() } else { picked }
     }
 
     pub fn items(&self) -> &[ShelfItem] {
@@ -110,8 +137,58 @@ impl Shelf {
     pub fn retain_existing(&mut self, exists: impl Fn(&Path) -> bool) -> bool {
         let before = self.items.len();
         self.items.retain(|i| exists(&i.path));
+        let items = &self.items;
+        self.selected.retain(|p| items.iter().any(|i| key(&i.path) == key(p)));
         self.items.len() != before
     }
+}
+
+/// What the shelf card's footer does with its files.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShelfOp {
+    /// Windows' share sheet (Quick Share, Nearby Sharing, the apps).
+    Share,
+    /// A picture's text onto the clipboard (Windows' own recogniser).
+    CopyText,
+    /// Pictures made smaller, as JPEGs beside them.
+    Shrink,
+    /// One zip of them all.
+    Zip,
+}
+
+/// A chip's label.
+pub fn op_label(op: ShelfOp) -> &'static str {
+    match op {
+        ShelfOp::Share => tr("Paylaş"),
+        ShelfOp::CopyText => tr("Metni kopyala"),
+        ShelfOp::Shrink => tr("Küçült"),
+        ShelfOp::Zip => tr("Zip yap"),
+    }
+}
+
+/// A picture WIC decodes (the shrink and the text recogniser take these; a drawing has no pixels).
+pub fn is_raster(name: &str) -> bool {
+    matches!(extension(name).as_deref(), Some("png" | "jpg" | "jpeg" | "bmp" | "gif" | "tif" | "tiff" | "webp" | "heic" | "jxr"))
+}
+
+/// The footer's chips for `targets`, in their order: Paylaş with a file among them, Metni
+/// kopyala for one picture, Küçült for pictures only, Zip yap for two or more or a folder.
+pub fn ops(targets: &[&ShelfItem]) -> Vec<ShelfOp> {
+    let picture = |i: &&ShelfItem| i.kind != FileKind::Folder && is_raster(&i.name);
+    let mut out = Vec::new();
+    if targets.iter().any(|i| i.kind != FileKind::Folder) {
+        out.push(ShelfOp::Share);
+    }
+    if targets.len() == 1 && targets.iter().all(picture) {
+        out.push(ShelfOp::CopyText);
+    }
+    if !targets.is_empty() && targets.iter().all(picture) {
+        out.push(ShelfOp::Shrink);
+    }
+    if targets.len() > 1 || targets.iter().any(|i| i.kind == FileKind::Folder) {
+        out.push(ShelfOp::Zip);
+    }
+    out
 }
 
 /// Grid rows on the card: four tiles a row, one to three rows.
@@ -119,10 +196,15 @@ pub fn rows(n: usize) -> usize {
     n.div_ceil(4).clamp(1, 3)
 }
 
-/// The card's height: the header, 75 DIP tiles 10 DIP apart, 20 DIP below.
+/// The card's height: the header, 75 DIP tiles 10 DIP apart, then the footer's chips (12 DIP
+/// above, 28 tall, 16 below).
 pub fn card_height_dip(n: usize) -> f32 {
-    64.0 + 85.0 * rows(n) as f32
+    44.0 + 85.0 * rows(n) as f32 + FOOTER_GAP_DIP + FOOTER_CHIP_DIP + 16.0
 }
+
+/// The footer's gap under the last tile and its chips' height.
+pub const FOOTER_GAP_DIP: f32 = 12.0;
+pub const FOOTER_CHIP_DIP: f32 = 28.0;
 
 #[cfg(test)]
 mod tests {
@@ -214,9 +296,60 @@ mod tests {
     #[test]
     fn rows_and_height() {
         assert_eq!([rows(1), rows(4), rows(5), rows(12)], [1, 1, 2, 3]);
-        assert_eq!(card_height_dip(1), 149.0);
-        assert_eq!(card_height_dip(5), 234.0);
-        assert_eq!(card_height_dip(12), 319.0);
+        // The tiles, then the footer's chips (12 + 28 + 16).
+        assert_eq!(card_height_dip(1), 185.0);
+        assert_eq!(card_height_dip(5), 270.0);
+        assert_eq!(card_height_dip(12), 355.0);
+    }
+
+    #[test]
+    fn a_click_selects_and_the_selection_follows_the_files() {
+        let mut s = Shelf::default();
+        s.add(&files(&[r"C:\a.png", r"C:\b.png", r"C:\c.png"]), no_dirs);
+        s.toggle(1);
+        assert_eq!((s.is_selected(0), s.is_selected(1)), (false, true), "b, the middle one");
+        s.add(&files(&[r"C:\d.png"]), no_dirs);
+        assert!(s.is_selected(2), "b moved down a place and stays selected");
+        s.toggle(2);
+        assert!(!s.is_selected(2), "a second click lets it go");
+        s.toggle(0);
+        s.remove(0);
+        assert!(!(0..3).any(|i| s.is_selected(i)), "removed with its file");
+        s.toggle(0);
+        assert!(s.retain_existing(|p| p != Path::new(r"C:\c.png")));
+        assert!(!s.is_selected(0) && s.targets().len() == 2, "gone from disk: from the selection too");
+        s.toggle(1);
+        s.clear();
+        s.add(&files(&[r"C:\a.png"]), no_dirs);
+        assert!(!s.is_selected(0), "cleared with the shelf");
+        s.toggle(9);
+        assert!(s.targets().len() == 1, "no tile there");
+    }
+
+    #[test]
+    fn the_footer_acts_on_the_selection_or_everything() {
+        let mut s = Shelf::default();
+        s.add(&files(&[r"C:\a.png", r"C:\b.pdf", r"C:\c.jpg"]), no_dirs);
+        let names = |t: Vec<&ShelfItem>| t.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
+        assert_eq!(names(s.targets()), ["c.jpg", "b.pdf", "a.png"], "none selected: all, newest first");
+        s.toggle(2);
+        s.toggle(0);
+        assert_eq!(names(s.targets()), ["c.jpg", "a.png"], "the shelf's order");
+    }
+
+    #[test]
+    fn the_footer_offers_what_fits() {
+        use ShelfOp::*;
+        let item = |name: &str, dir: bool| ShelfItem { path: PathBuf::from(format!(r"C:\x\{name}")), name: name.into(), kind: file_kind(name, dir) };
+        let ops_of = |items: &[ShelfItem]| ops(&items.iter().collect::<Vec<_>>());
+        assert_eq!(ops_of(&[item("ekran.png", false)]), [Share, CopyText, Shrink], "one picture");
+        assert_eq!(ops_of(&[item("a.png", false), item("b.JPG", false)]), [Share, Shrink, Zip], "pictures");
+        assert_eq!(ops_of(&[item("a.png", false), item("rapor.pdf", false)]), [Share, Zip], "a picture and a document");
+        assert_eq!(ops_of(&[item("rapor.pdf", false)]), [Share], "one document");
+        assert_eq!(ops_of(&[item("logo.svg", false)]), [Share], "a drawing: no pixels to read or shrink");
+        assert_eq!(ops_of(&[item("Fotoğraflar", true)]), [Zip], "a folder: zipped, not shared");
+        assert_eq!(ops_of(&[item("Fotoğraflar", true), item("a.png", false)]), [Share, Zip], "the file among them is shared");
+        assert_eq!(ops_of(&[]), Vec::<ShelfOp>::new());
     }
 
     #[test]

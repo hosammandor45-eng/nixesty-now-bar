@@ -45,10 +45,14 @@ pub enum Icon {
     Bell,
     /// "Sen yokken": what happened while away.
     History,
+    /// The shelf's footer: Paylaş, Metni kopyala, Küçült.
+    Share,
+    Copy,
+    Shrink,
 }
 
 impl Icon {
-    pub const ALL: [Icon; 39] = [
+    pub const ALL: [Icon; 42] = [
         Icon::Play,
         Icon::Pause,
         Icon::Prev,
@@ -88,6 +92,9 @@ impl Icon {
         Icon::Download,
         Icon::Bell,
         Icon::History,
+        Icon::Share,
+        Icon::Copy,
+        Icon::Shrink,
     ];
 }
 
@@ -134,6 +141,10 @@ pub fn glyph(i: Icon) -> char {
         Icon::Download => '\u{E896}',
         Icon::Bell => '\u{EA8F}',
         Icon::History => '\u{E81C}',
+        Icon::Share => '\u{E72D}',
+        Icon::Copy => '\u{E8C8}',
+        // BackToWindow: two arrows coming in.
+        Icon::Shrink => '\u{E73F}',
     }
 }
 

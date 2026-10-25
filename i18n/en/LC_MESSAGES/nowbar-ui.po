@@ -3153,3 +3153,23 @@ msgstr "+{} more"
 #: ui/pages.slint
 msgid "Kilidi açınca, kilitliyken olanlar"
 msgstr "On unlocking, what happened while locked"
+
+#: src/app.rs
+msgid "Paylaşılamadı"
+msgstr "Couldn't share"
+
+#: src/activities/shelf.rs
+msgid "Paylaş"
+msgstr "Share"
+
+#: src/activities/shelf.rs
+msgid "Metni kopyala"
+msgstr "Copy text"
+
+#: src/activities/shelf.rs
+msgid "Küçült"
+msgstr "Shrink"
+
+#: src/activities/shelf.rs
+msgid "Zip yap"
+msgstr "Zip"

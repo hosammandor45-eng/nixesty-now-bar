@@ -27,7 +27,7 @@ use crate::i18n::{n_, tr, trf};
 use super::color::TeamPalette;
 use super::crest::Crest;
 use crate::activities::media::{format_media_time, shown_position, MediaSnapshot, SeekHold};
-pub use crate::activities::shelf::FileKind;
+pub use crate::activities::shelf::{FileKind, ShelfOp};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TimerCard {
@@ -362,13 +362,43 @@ pub struct ShelfTile {
     pub name: String,
     pub thumb: Option<Crest>,
     pub kind: FileKind,
+    /// Clicked for the footer's chips: the accent ring and a tick.
+    pub selected: bool,
 }
 
-/// The shelf's grid (newest first); `hover` shows that tile's close button.
+/// The shelf's grid (newest first); `hover` shows that tile's close button. `chips`: the footer's
+/// ops for the selection (or everything), each with its label or, for a moment, its result.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShelfCard {
     pub tiles: Vec<ShelfTile>,
     pub hover: Option<usize>,
+    pub chips: Vec<(ShelfOp, String)>,
+}
+
+/// A footer chip's glyph.
+pub fn op_icon(op: ShelfOp) -> Icon {
+    match op {
+        ShelfOp::Share => Icon::Share,
+        ShelfOp::CopyText => Icon::Copy,
+        ShelfOp::Shrink => Icon::Shrink,
+        ShelfOp::Zip => Icon::Archive,
+    }
+}
+
+/// The shelf footer's chips, left to right from the tiles' edge, 12 DIP under the last row:
+/// 12 DIP in, the glyph (14), 6, the label (`label_px` wide), 12 out; 8 DIP apart.
+pub fn shelf_chips(label_px: &[f32], rows: usize, s: &Scale) -> Vec<D2D_RECT_F> {
+    let d = |v: f32| (v * s.0).round();
+    let top = d(44.0 + 85.0 * rows as f32 + crate::activities::shelf::FOOTER_GAP_DIP);
+    let mut x = d(20.0);
+    label_px
+        .iter()
+        .map(|w| {
+            let chip = D2D_RECT_F { left: x, top, right: x + d(44.0) + w.ceil(), bottom: top + d(crate::activities::shelf::FOOTER_CHIP_DIP) };
+            x = chip.right + d(8.0);
+            chip
+        })
+        .collect()
 }
 
 /// A tile's colour and glyph when it has no preview (One UI's My Files hues).
@@ -600,6 +630,8 @@ pub enum CardAction {
     ShelfRemove(usize),
     /// The shelf card's "Temizle".
     ShelfClear,
+    /// A shelf footer chip.
+    ShelfTool(ShelfOp),
     /// The live card's ×: the item goes.
     LiveClose,
     /// A Claude card's answers to the permission it waits for, and its "Pencereye git".
@@ -1553,7 +1585,8 @@ impl Painter<'_, '_> {
                     self.ink.image_rounded(&img.px, img.size, src, t, radius)?;
                     // The name stays readable on any photo.
                     self.ink.vgradient(t, radius, [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.62])?;
-                    if let Some(ext) = crate::activities::shelf::extension_label(&tile.name) {
+                    // A selected tile's tick takes the corner.
+                    if let Some(ext) = crate::activities::shelf::extension_label(&tile.name).filter(|_| !tile.selected) {
                         let st = TextStyle::new(Face::Text, Weight::SemiBold, d(8.5), white(0.95)).centered();
                         let w = self.ink.measure(&ext, &st)? + d(10.0);
                         let badge = rect(t.left + d(6.0), t.top + d(6.0), w.round(), d(14.0).round());
@@ -1570,15 +1603,39 @@ impl Painter<'_, '_> {
                 }
             }
             self.ink.text(&tile.name, rect(t.left + d(8.0), t.bottom - d(8.0) - d(15.0), tw - d(16.0), d(15.0)), &name)?;
+            if tile.selected {
+                let (r, g, b) = timer_accent();
+                let ring = rect(t.left + d(1.0), t.top + d(1.0), tw - d(2.0), th - d(2.0));
+                self.ink.rrect_outline(ring, radius - d(1.0), d(2.0), rgba(r, g, b, 1.0))?;
+                // The close button's size and inset, in the other corner.
+                let side = d(20.0).round();
+                let tick = rect(t.left + d(5.0).round(), t.top + d(5.0).round(), side, side);
+                self.ink.rrect(tick, side / 2.0, rgba(r, g, b, 1.0))?;
+                self.ink.text(&glyph(Icon::Check).to_string(), tick, &TextStyle::new(Face::Icons, Weight::Regular, d(9.0), white(1.0)).centered())?;
+            }
             if c.hover == Some(i) {
-                let ring = rect(t.left + d(0.75), t.top + d(0.75), tw - d(1.5), th - d(1.5));
-                self.ink.rrect_outline(ring, radius - d(0.75), d(1.5), white(0.55))?;
+                if !tile.selected {
+                    let ring = rect(t.left + d(0.75), t.top + d(0.75), tw - d(1.5), th - d(1.5));
+                    self.ink.rrect_outline(ring, radius - d(0.75), d(1.5), white(0.55))?;
+                }
                 let close = l.closes[i];
                 self.ink.rrect(close, (close.right - close.left) / 2.0, [0.0, 0.0, 0.0, 0.6])?;
                 let x = TextStyle::new(Face::Icons, Weight::Regular, d(8.5), white(1.0)).centered();
                 self.ink.text(&glyph(Icon::Close).to_string(), close, &x)?;
                 self.hits.push((close, CardAction::ShelfRemove(i)));
             }
+        }
+        // The footer: what the chips do to the selection, or to everything; "Temizle"'s look.
+        let label = TextStyle::new(Face::Text, Weight::Medium, d(12.0), white(0.85));
+        let widths = c.chips.iter().map(|(_, text)| self.ink.measure(text, &label)).collect::<Result<Vec<f32>>>()?;
+        let chips = shelf_chips(&widths, crate::activities::shelf::rows(c.tiles.len()), self.s);
+        let glyph_style = TextStyle::new(Face::Icons, Weight::Regular, d(13.0), white(0.85)).centered();
+        for ((op, text), chip) in c.chips.iter().zip(chips) {
+            let h = chip.bottom - chip.top;
+            self.ink.rrect(chip, h / 2.0, white(0.09))?;
+            self.ink.text(&glyph(op_icon(*op)).to_string(), D2D_RECT_F { left: chip.left + d(12.0), right: chip.left + d(26.0), ..chip }, &glyph_style)?;
+            self.ink.text(text, D2D_RECT_F { left: chip.left + d(32.0), ..chip }, &label)?;
+            self.hits.push((chip, CardAction::ShelfTool(*op)));
         }
         Ok(())
     }
@@ -2291,8 +2348,25 @@ mod tests {
     }
 
     fn shelf_card(n: usize) -> ShelfCard {
-        let tiles = (0..n).map(|i| ShelfTile { name: format!("f{i}.txt"), thumb: None, kind: FileKind::Document }).collect();
-        ShelfCard { tiles, hover: None }
+        let tiles = (0..n).map(|i| ShelfTile { name: format!("f{i}.txt"), thumb: None, kind: FileKind::Document, selected: false }).collect();
+        ShelfCard { tiles, hover: None, chips: vec![] }
+    }
+
+    #[test]
+    fn shelf_chips_line_up_under_the_tiles() {
+        let s = Scale(1.25);
+        let tiles = shelf_layout(5, &s).tiles;
+        let chips = shelf_chips(&[40.0, 80.5], 2, &s);
+        assert_eq!(chips[0].left, tiles[0].left, "under the first column");
+        assert_eq!(chips[0].top - tiles[4].bottom, 15.0, "12 DIP under the last row");
+        assert_eq!(chips[0].bottom - chips[0].top, 35.0, "28 DIP tall");
+        assert_eq!((chips[0].right - chips[0].left, chips[1].right - chips[1].left), (95.0, 136.0), "the label plus 44 DIP of glyph and padding");
+        assert_eq!(chips[1].left - chips[0].right, 10.0, "8 DIP apart");
+        let h = card_size_dip(&CardContent::Shelf(shelf_card(5))).1 * 1.25;
+        assert!((h - chips[0].bottom - 20.0).abs() <= 1.0, "16 DIP below");
+        // The widest three (one picture, in Turkish) fit inside the tiles' width.
+        let three = shelf_chips(&[38.0 * 1.25, 78.0 * 1.25, 37.0 * 1.25], 1, &s);
+        assert!(three[2].right <= tiles[3].right, "{three:?}");
     }
 
     #[test]
@@ -2383,7 +2457,7 @@ mod tests {
 
     #[test]
     fn shelf_card_size() {
-        assert_eq!(card_size_dip(&CardContent::Shelf(shelf_card(5))), (370.0, 234.0));
+        assert_eq!(card_size_dip(&CardContent::Shelf(shelf_card(5))), (370.0, 270.0), "two rows and the footer");
         assert_eq!(card_radius_dip(&CardContent::Shelf(shelf_card(1))), 36.0);
     }
 

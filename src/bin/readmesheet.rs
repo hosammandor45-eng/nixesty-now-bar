@@ -105,9 +105,17 @@ fn shelf(n: usize, side: u32) -> ShelfCard {
     let tiles = files
         .iter()
         .take(n)
-        .map(|(name, hue)| ShelfTile { name: name.to_string(), thumb: hue.map(|h: usize| swatch(side, photo[h].0, photo[h].1)), kind: file_kind(name, *name == "Projeler") })
+        .map(|(name, hue)| ShelfTile { name: name.to_string(), thumb: hue.map(|h: usize| swatch(side, photo[h].0, photo[h].1)), kind: file_kind(name, *name == "Projeler"), selected: false })
+        .collect::<Vec<_>>();
+    // Nothing selected: the chips act on everything.
+    let items: Vec<nowbar::activities::shelf::ShelfItem> =
+        tiles.iter().map(|t| nowbar::activities::shelf::ShelfItem { path: format!(r"C:\Raf\{}", t.name).into(), name: t.name.clone(), kind: t.kind }).collect();
+    let chips = nowbar::activities::shelf::ops(&items.iter().collect::<Vec<_>>())
+        .into_iter()
+        .filter(|op| matches!(op, nowbar::activities::shelf::ShelfOp::Share))
+        .map(|op| (op, nowbar::activities::shelf::op_label(op).to_string()))
         .collect();
-    ShelfCard { tiles, hover: None }
+    ShelfCard { tiles, hover: None, chips }
 }
 
 struct Sheet {

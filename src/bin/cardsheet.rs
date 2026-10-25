@@ -7,7 +7,7 @@ use nowbar::platform::audio::{list_outputs, output_volume, picker_order, OutputB
 use nowbar::activities::live::{AppIcon, LiveState};
 use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
 use nowbar::activities::games::Store;
-use nowbar::activities::shelf::file_kind;
+use nowbar::activities::shelf::{file_kind, op_label, ops, ShelfItem, ShelfOp};
 use nowbar::activities::claude::StepKind;
 use nowbar::render::crest::Crest;
 use nowbar::render::gfx::{rect, Ink, TextKit};
@@ -74,8 +74,9 @@ fn swatch(side: u32, from: [u8; 3], to: [u8; 3]) -> Crest {
     Crest { px: std::sync::Arc::new(px), size: (side, side) }
 }
 
-/// `n` shelf tiles: photos in a few hues and files of every kind without a preview, one long name.
-fn shelf(n: usize, hover: Option<usize>) -> ShelfCard {
+/// `n` shelf tiles: photos in a few hues and files of every kind without a preview, one long name;
+/// `selected` clicked, the footer's chips for them (`said`: one chip's result in its label).
+fn shelf(n: usize, hover: Option<usize>, selected: &[usize], said: Option<(ShelfOp, &str)>) -> ShelfCard {
     let side = Scale(1.25).px(75.0) as u32;
     let photo = [([0xE8, 0x6A, 0x3A], [0x8E, 0x2B, 0x5C]), ([0x2F, 0x80, 0xED], [0x56, 0xCC, 0xF2]), ([0x11, 0x99, 0x8E], [0x38, 0xEF, 0x7D])];
     let files = [
@@ -97,10 +98,19 @@ fn shelf(n: usize, hover: Option<usize>) -> ShelfCard {
             let (name, hue) = files[i % files.len()];
             let kind = file_kind(name, name == "Ekran görüntüleri");
             let thumb = hue.map(|h: usize| swatch(side, photo[h].0, photo[h].1));
-            ShelfTile { name: name.to_string(), thumb, kind }
+            ShelfTile { name: name.to_string(), thumb, kind, selected: selected.contains(&i) }
+        })
+        .collect::<Vec<_>>();
+    let items: Vec<ShelfItem> = tiles.iter().map(|t| ShelfItem { path: format!(r"C:\Raf\{}", t.name).into(), name: t.name.clone(), kind: t.kind }).collect();
+    let targets: Vec<&ShelfItem> = if selected.is_empty() { items.iter().collect() } else { selected.iter().map(|i| &items[*i]).collect() };
+    let chips = ops(&targets)
+        .into_iter()
+        .map(|op| match said {
+            Some((done, text)) if done == op => (op, text.to_string()),
+            _ => (op, op_label(op).to_string()),
         })
         .collect();
-    ShelfCard { tiles, hover }
+    ShelfCard { tiles, hover, chips }
 }
 
 /// A picture in Epic's launcher cache on this PC (missing elsewhere: the store's colour shows).
@@ -288,9 +298,10 @@ fn main() -> Result<()> {
         game_card(Store::Epic, "Fortnite", &epic("39cbca1529a42219a35ddece5acaf84f"), "Güncelleniyor · 4:12", "Başladı 22:41", None, &s),
         game_card(Store::Epic, "Rocket League", "", "Oynuyor · 34 dk", "Başladı 21:10", None, &s),
         game_card(Store::Epic, "Arcade Paradise", &epic("060836f13d8973394299024e8a0df87a"), "Duraklatıldı · %18", "482 MB / 2,5 GB", Some(0.189), &s),
-        CardContent::Shelf(shelf(1, None)),
-        CardContent::Shelf(shelf(5, Some(1))),
-        CardContent::Shelf(shelf(12, None)),
+        CardContent::Shelf(shelf(1, None, &[], None)),
+        CardContent::Shelf(shelf(5, Some(1), &[0], Some((ShelfOp::CopyText, "Kopyalandı")))),
+        CardContent::Shelf(shelf(12, None, &[0, 8, 11], None)),
+        CardContent::Shelf(shelf(12, Some(5), &[], None)),
         CardContent::Claude(Box::new(claude_card(LiveState::Run, true, false, false))),
         CardContent::Claude(Box::new(claude_card(LiveState::Run, false, false, true))),
         CardContent::Claude(Box::new(claude_card(LiveState::Wait, false, true, true))),
