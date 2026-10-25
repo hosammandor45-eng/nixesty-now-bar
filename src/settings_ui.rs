@@ -93,6 +93,7 @@ pub const INDEX: &[Entry] = &[
     e(8, "privacy-on", n_("Mikrofon / kamera"), n_("Mikrofon ve kamera kullanımı"), n_("Bir uygulama mikrofonu ya da kamerayı kullanırken pilde, uygulamanın adıyla"), "mikrofon kamera gizlilik webcam kayıt discord zoom"),
     e(8, "live-on", n_("Canlı etkinlikler"), n_("Canlı etkinlikler"), n_("nowbar.exe push ve Claude Code'un hook'ları pilde bir etkinlik gösterir"), "claude betik script canlı etkinlik hook push derleme"),
     e(8, "capture-moment", n_("Ekran görüntüleri"), n_("Ekran görüntüsünü göster"), n_("ShareX ya da Ekran Alıntısı Aracı yeni bir görüntü kaydedince pilde kısa bir an; sürükleyip atabilirsin"), "ekran görüntüsü screenshot sharex alıntı snipping kırpma yakalama"),
+    e(8, "transfer-on", n_("Dosya kopyalama"), n_("Kopyalama ilerlemesi"), n_("Explorer kopyalar, taşır ya da silerken pilde yüzde ve kalan süre; penceresi küçültülse de"), "kopyala kopyalama taşı sil dosya ilerleme explorer gezgin yüzde kalan süre copy"),
     e(8, "capture-to-shelf", n_("Ekran görüntüleri"), n_("Ekran görüntülerini rafa ekle"), n_("Yeni görüntüler rafa düşer, sonra sürükleyip atmak için"), "ekran görüntüsü raf shelf sharex screenshot"),
     e(8, "claude-ask", n_("Canlı etkinlikler"), n_("Claude izinleri"), n_("Claude izin isteyince kartında İzin ver / Reddet çıkar"), "claude izin onay reddet permission hook"),
     e(8, "claude-ask-wait", n_("Canlı etkinlikler"), n_("İzin için bekleme"), n_("Kart bu kadar cevap bekler, sonra Claude kendi penceresinde sorar"), "claude izin bekleme süre saniye zaman aşımı"),

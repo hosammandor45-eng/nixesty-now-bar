@@ -27,6 +27,8 @@ pub mod shelf_tools;
 pub mod shelf_tools_worker;
 pub mod shelf_worker;
 pub mod timer;
+pub mod transfer;
+pub mod transfer_worker;
 pub mod weather;
 pub mod weather_alert;
 pub mod weather_worker;
@@ -74,6 +76,8 @@ pub enum ActivityKind {
     Usage,
     /// Back from a lock: "Sen yokken · 4 şey", for a moment.
     Away,
+    /// Explorer copying, moving or deleting (its dialog, minimised or not), and its end for a moment.
+    Transfer,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -122,6 +126,7 @@ pub fn settings_page_for(kind: ActivityKind) -> u8 {
         | ActivityKind::WeatherAlert
         | ActivityKind::Capture
         | ActivityKind::Away
+        | ActivityKind::Transfer
         | ActivityKind::Live(_) => 8,
         ActivityKind::Game(_) => 9,
         ActivityKind::Usage => 10,
@@ -142,6 +147,7 @@ pub fn has_card(kind: ActivityKind) -> bool {
             | ActivityKind::Capture
             | ActivityKind::Usage
             | ActivityKind::Away
+            | ActivityKind::Transfer
     )
 }
 
@@ -222,6 +228,10 @@ fn rank(p: &Presence, now_ms: u64, keep_ms: u64, buds_front: u64) -> Option<u8> 
         (ActivityKind::Usage, _) => None,
         (ActivityKind::Away, _) if age < away::AWAY_MOMENT_MS => Some(1),
         (ActivityKind::Away, _) => None,
+        (ActivityKind::Transfer, PresenceState::Moment) if age < transfer::TRANSFER_DONE_MS => Some(1),
+        (ActivityKind::Transfer, PresenceState::Moment) => None,
+        // Something the user started and waits for: ahead of the music.
+        (ActivityKind::Transfer, _) => Some(3),
     }
 }
 
@@ -370,6 +380,19 @@ mod tests {
         assert!(!stack_order(&live, 1_000 + AWAY_MOMENT_MS + 1, picked).contains(&Away));
         assert!(!has_card(Away), "its pill opens the away card, not a stack card");
         assert_eq!(settings_page_for(Away), 8);
+    }
+
+    #[test]
+    fn a_copy_leads_the_music_and_its_end_is_a_moment() {
+        use super::transfer::TRANSFER_DONE_MS;
+        let live = [p(Media(1), Playing, 100), p(Transfer, Running, 1_000)];
+        assert_eq!(stack_order(&live, 2_000, None), vec![Transfer, Media(1)], "ahead of the music");
+        let done = [p(Media(1), Playing, 100), p(Transfer, Moment, 1_000)];
+        let picked = Some((Media(1), 2_000));
+        assert_eq!(stack_order(&done, 3_000, picked).first(), Some(&Transfer), "ahead of the pick while it lasts");
+        assert!(!stack_order(&done, 1_000 + TRANSFER_DONE_MS + 1, picked).contains(&Transfer));
+        assert!(!has_card(Transfer), "its pill brings Explorer's dialog up");
+        assert_eq!(settings_page_for(Transfer), 8);
     }
 
     #[test]

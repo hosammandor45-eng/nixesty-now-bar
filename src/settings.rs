@@ -231,6 +231,8 @@ pub struct Settings {
     pub capture_moment: bool,
     /// ...and goes onto the shelf.
     pub capture_to_shelf: bool,
+    /// Explorer copying, moving or deleting shows in the pill with its progress.
+    pub transfer_on: bool,
     /// Claude's permission requests get "İzin ver" / "Reddet" on its card.
     pub claude_ask: bool,
     /// Other apps may ask to show notifications over loopback HTTP (DOCS.md); off until the
@@ -352,6 +354,7 @@ impl Default for Settings {
             live_enabled: true,
             capture_moment: true,
             capture_to_shelf: true,
+            transfer_on: true,
             claude_ask: true,
             api_enabled: false,
             api_apps: Vec::new(),
@@ -738,6 +741,12 @@ mod tests {
         assert!(old.wellbeing_on && old.wellbeing_in_brief && old.wellbeing_limit_moments && old.wellbeing_limits.is_empty());
         let s = parse(r#"{"wellbeing_limits": [{"exe": "Discord.exe", "minutes": 120}, {"exe": "x.exe", "minutes": 0}, {"exe": "y.exe", "minutes": 99999}]}"#);
         assert_eq!(s.wellbeing_limits, vec![AppLimit { exe: "Discord.exe".into(), minutes: 120 }, AppLimit { exe: "y.exe".into(), minutes: 1440 }]);
+    }
+
+    #[test]
+    fn copies_show_by_default() {
+        let old: Settings = serde_json::from_str(r#"{"enabled": true}"#).unwrap();
+        assert!(old.transfer_on, "an older file: Explorer's copy progress in the pill");
     }
 
     #[test]

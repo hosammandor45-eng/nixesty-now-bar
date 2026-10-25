@@ -54,6 +54,8 @@ use crate::render::island::Island;
 use crate::activities::capture::{size_text, CAPTURE_MOMENT_MS};
 use crate::activities::away::{self, AwayItem, AwayKind, AwayLog, AwayReport, AWAY_MOMENT_MS};
 use crate::activities::music::{self, plays_text, week_caption, Listening, MusicLog};
+use crate::activities::transfer::{done_text, pill_detail, TransferKind, TRANSFER_DONE_MS};
+use crate::activities::transfer_worker::{TransferMailbox, TransferNow};
 use crate::render::card::{MusicCard, MusicRow, MUSIC_ACCENT};
 use crate::activities::claude::{done_status, step_label, task_progress};
 use crate::platform::captures::{Capture, CaptureMailbox};
@@ -747,6 +749,12 @@ pub struct App {
     wellbeing_box: WellbeingMailbox,
     usage_moment: Option<(String, u32, u64)>,
     app_icons: HashMap<PathBuf, Option<Crest>>,
+    /// Explorer's copy dialog as its worker last read it, since when it shows (ms), and the last
+    /// one's end (a moment).
+    transfer: Option<TransferNow>,
+    transfer_since: u64,
+    transfer_done: Option<(TransferKind, u64)>,
+    transfer_box: TransferMailbox,
     /// The week's music: what played, the track being followed, when the file was last written.
     music: MusicLog,
     listening: Listening,
@@ -826,6 +834,8 @@ impl App {
         crate::activities::wellbeing_worker::start(wellbeing_box.clone(), crate::platform::windows::post_wellbeing);
         let game_box: GamesMailbox = Default::default();
         crate::activities::games_worker::start(game_box.clone(), crate::platform::windows::post_games);
+        let transfer_box: TransferMailbox = Default::default();
+        crate::activities::transfer_worker::start(transfer_box.clone(), crate::platform::windows::post_transfer);
         let weather_mailbox: WeatherMailbox = Default::default();
         let capture_mailbox: CaptureMailbox = Default::default();
         // The pill's preview: 36×24 DIP at the pill's scale.
@@ -963,6 +973,10 @@ impl App {
             wellbeing_box,
             usage_moment: None,
             app_icons: HashMap::new(),
+            transfer: None,
+            transfer_since: 0,
+            transfer_done: None,
+            transfer_box,
             music: music::load(&music::path()),
             listening: Listening::default(),
             music_saved_ms: 0,
@@ -1228,6 +1242,12 @@ impl App {
         }
         if let Some(at) = self.away_moment.filter(|_| s.away_summary && self.away.is_some()) {
             p.push(Presence { kind: ActivityKind::Away, state: PresenceState::Moment, changed_ms: at });
+        }
+        // A copy under way, else the last one's end for a moment.
+        match (self.transfer.filter(|_| s.transfer_on), self.transfer_done.filter(|_| s.transfer_on)) {
+            (Some(_), _) => p.push(Presence { kind: ActivityKind::Transfer, state: PresenceState::Running, changed_ms: self.transfer_since }),
+            (None, Some((_, at))) => p.push(Presence { kind: ActivityKind::Transfer, state: PresenceState::Moment, changed_ms: at }),
+            _ => {}
         }
         if let Some((_, at)) = self.capture.as_ref().filter(|_| s.capture_moment) {
             p.push(Presence { kind: ActivityKind::Capture, state: PresenceState::Moment, changed_ms: *at });
@@ -1640,6 +1660,11 @@ impl App {
             ActivityKind::Game(key) => self.game_pill(key, now),
             ActivityKind::Usage => self.usage_moment.as_ref().map(|(exe, minutes, _)| PillContent::Usage { app: self.app_display(exe), text: limit_text(*minutes) }),
             ActivityKind::Away => self.away.as_ref().map(|r| PillContent::Away { count: away::count_text(r.items.len()) }),
+            ActivityKind::Transfer => match (self.transfer, self.transfer_done) {
+                (Some(t), _) => Some(PillContent::Transfer { kind: t.kind, pct: t.pct, detail: pill_detail(t.pct, t.left_s), done: false }),
+                (None, Some((kind, _))) => Some(PillContent::Transfer { kind, pct: 100, detail: String::new(), done: true }),
+                _ => None,
+            },
             ActivityKind::WeatherAlert => self.alert_moment.map(|(a, _)| {
                 let (head, detail) = alert_text(&a, unix_now(), self.weather.as_ref().map_or_else(tz_offset_s, |w| w.utc_offset_s));
                 PillContent::WeatherAlert { kind: a.kind, head: head.to_string(), detail }
@@ -1727,6 +1752,7 @@ impl App {
                 | ActivityKind::WeatherAlert
                 | ActivityKind::Usage
                 | ActivityKind::Away
+                | ActivityKind::Transfer
                 | ActivityKind::Capture,
             ) => None,
             OpenCard::Activity(ActivityKind::Shelf) => (!self.shelf.is_empty()).then(|| {
@@ -2523,6 +2549,12 @@ impl App {
                 sooner(AWAY_MOMENT_MS - age + 5);
             }
         }
+        if let Some((_, at)) = self.transfer_done {
+            let age = now.saturating_sub(at);
+            if age < TRANSFER_DONE_MS {
+                sooner(TRANSFER_DONE_MS - age + 5);
+            }
+        }
         // A shelf chip's result gives its label back (one still working waits for its answer).
         if let Some((_, _, until)) = &self.shelf_status {
             if *until != u64::MAX {
@@ -3285,6 +3317,39 @@ impl App {
         Ok(())
     }
 
+    /// The copy dialog's worker: a dialog came, moved on or went; one that went nearly done is a
+    /// moment (and, while locked, a "Sen yokken" row).
+    fn take_transfer(&mut self) -> Result<()> {
+        let (now, finished) = match self.transfer_box.lock() {
+            Ok(mut b) => (b.now, std::mem::take(&mut b.finished)),
+            Err(_) => return Ok(()),
+        };
+        if now.is_some() && self.transfer.is_none() {
+            self.transfer_since = now_ms();
+        }
+        self.transfer = now;
+        if let Some(kind) = finished.last().copied() {
+            log(&format!("transfers: {kind:?} finished"));
+            self.transfer_done = Some((kind, now_ms()));
+            self.note_away("transfer".into(), AwayKind::Live, done_text(kind).into());
+        }
+        self.refresh()
+    }
+
+    /// The pill's click: Explorer's dialog comes up (restored if minimised; the click was ours, so
+    /// the foreground may be handed on).
+    fn show_transfer(&self) {
+        let Some(t) = self.transfer else { return };
+        use windows::Win32::UI::WindowsAndMessaging::{IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE};
+        let hwnd = HWND(t.dialog as *mut _);
+        unsafe {
+            if IsIconic(hwnd).as_bool() {
+                let _ = ShowWindow(hwnd, SW_RESTORE);
+            }
+            let _ = SetForegroundWindow(hwnd);
+        }
+    }
+
     /// The week's music follows the player in front (what plays, not what's paused).
     fn follow_music(&mut self) {
         if !settings::current().music_week {
@@ -3879,6 +3944,10 @@ impl App {
                     (Some(ActivityKind::Clock), None) => self.toggle_card(OpenCard::Brief, true),
                     (Some(ActivityKind::Usage), None) => self.toggle_card(OpenCard::Wellbeing, true),
                     (Some(ActivityKind::Away), None) => self.toggle_card(OpenCard::Away, true),
+                    (Some(ActivityKind::Transfer), None) => {
+                        self.show_transfer();
+                        Ok(())
+                    }
                     (Some(kind), None) => self.toggle_card(OpenCard::Activity(kind), true),
                     (None, _) => Ok(()),
                 }
@@ -4067,6 +4136,7 @@ impl App {
             UiEvent::Wellbeing => self.take_wellbeing(),
             UiEvent::Api => self.take_api(),
             UiEvent::ShelfTool => self.take_tools(),
+            UiEvent::Transfer => self.take_transfer(),
             UiEvent::EffectsChanged => self.ui.morph.set_blur(effects_enabled()),
             UiEvent::Timer(TIMER_OUTSIDE) if !self.card_pinned && self.clicked_outside() => self.close_card(),
             UiEvent::Pill(PillEvent::Hover(over)) | UiEvent::Card(CardEvent::Hover(over)) => {

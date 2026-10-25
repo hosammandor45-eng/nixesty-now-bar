@@ -509,6 +509,7 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_brief_morning(s.brief_morning);
     st.set_brief_name(s.brief_name.clone().into());
     st.set_away_summary(s.away_summary);
+    st.set_transfer_on(s.transfer_on);
     st.set_windows_name(nowbar::platform::session::windows_full_name().as_deref().and_then(nowbar::activities::brief::first_name).unwrap_or_default().into());
     st.set_city(city_row(s.weather_city.as_ref()));
     st.set_weather_locate(s.weather_locate);
@@ -618,6 +619,7 @@ fn read(ui: &SettingsWindow, base: &Settings) -> Settings {
         brief_morning: st.get_brief_morning(),
         brief_name: st.get_brief_name().to_string(),
         away_summary: st.get_away_summary(),
+        transfer_on: st.get_transfer_on(),
         weather_city: picked_city(&st.get_city()),
         weather_locate: st.get_weather_locate(),
         fullscreen_hide: st.get_fullscreen_hide(),

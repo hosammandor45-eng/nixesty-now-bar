@@ -1767,6 +1767,17 @@ export component SystemInspector inherits VerticalLayout {
         }
     }
     ISection {
+        title: @tr("Dosya kopyalama");
+        IRow {
+            label: @tr("İlerlemeyi göster");
+            note: @tr("Explorer'ın penceresi küçültülse de");
+            Toggle {
+                checked <=> Store.transfer-on;
+                toggled => { Ui.changed(); }
+            }
+        }
+    }
+    ISection {
         title: @tr("Canlı etkinlikler");
         IRow {
             label: @tr("Canlı etkinlikler");

@@ -13,6 +13,12 @@ use nowbar::activities::weather_alert::AlertKind;
 use nowbar::activities::games::Store;
 use nowbar::render::pill::{paint_media_still, paint_pill_content, PillContent, PillThumb};
 use nowbar::activities::media::{Caps, MediaSnapshot};
+use nowbar::activities::transfer::TransferKind;
+
+/// Explorer copying, as the app shows it.
+fn transfer(kind: TransferKind, pct: u8, left_s: Option<u64>, done: bool) -> PillContent {
+    PillContent::Transfer { kind, pct, detail: nowbar::activities::transfer::pill_detail(pct, left_s), done }
+}
 
 /// A playing song (made up); `line`: the lyric on, in the title's place, as the app shows it.
 fn song(line: Option<&str>) -> PillContent {
@@ -122,6 +128,10 @@ fn main() -> Result<()> {
         ("Oynadın", game(Store::Epic, "Fortnite", "2 sa 14 dk oynadın", None, art(&epic(EPIC_COVER), &s), false)),
         ("Sınır", PillContent::Usage { app: "Discord".into(), text: "2 saati geçtin".into() }),
         ("Sınır (uzun)", PillContent::Usage { app: "Visual Studio Code".into(), text: "1 saat 30 dakikayı geçtin".into() }),
+        ("Kopyalama", transfer(TransferKind::Copy, 45, Some(130), false)),
+        ("Kopyalama (başta)", transfer(TransferKind::Copy, 3, None, false)),
+        ("Silme", transfer(TransferKind::Delete, 80, Some(20), false)),
+        ("Kopyalama bitti", transfer(TransferKind::Copy, 100, None, true)),
         ("Sen yokken", PillContent::Away { count: nowbar::activities::away::count_text(4) }),
         ("Sen yokken (çok)", PillContent::Away { count: nowbar::activities::away::count_text(12) }),
         ("Claude çalışıyor", PillContent::Live { key: 1, title: "now-bar".into(), status: "4:12".into(), claude: true, state: LiveState::Run, action: "Düzenliyor: app.rs".into() }),

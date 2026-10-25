@@ -28,6 +28,7 @@ use crate::activities::buds::{buds_labels, BudsSnapshot, NoiseControl};
 use crate::activities::weather::{fx_accent, palette, WeatherFx};
 use crate::activities::weather_alert::AlertKind;
 use crate::activities::games::Store;
+use crate::activities::transfer::{done_text, verb, TransferKind};
 use crate::activities::football::Side;
 use crate::activities::live::{AppIcon, LiveState};
 use crate::activities::media::MediaSnapshot;
@@ -163,6 +164,9 @@ pub enum PillContent {
     Usage { app: String, text: String },
     /// Back from a lock: "Sen yokken · 4 şey", for a moment.
     Away { count: String },
+    /// Explorer copying (moving, deleting): a ring round the circle, "Kopyalanıyor · %45 · 2 dk";
+    /// `done`: "Kopyalama bitti" for a moment.
+    Transfer { kind: TransferKind, pct: u8, detail: String, done: bool },
     /// A screenshot just saved: its wide preview and "1920×1080".
     Capture { thumb: Option<Crest>, size: String },
     /// Something another program sent: its title and "4:12" / "%40" / "İzin istiyor" / "Bitti".
@@ -288,6 +292,7 @@ impl PillContent {
             PillContent::Usage { .. } => 260.0,
             // "While you were away · 12 things" whole.
             PillContent::Away { .. } => 240.0,
+            PillContent::Transfer { .. } => 260.0,
             PillContent::Shelf { min_width_dip, .. } => min_width_dip.max(200.0),
             PillContent::Live { claude: true, .. } | PillContent::App { .. } => 300.0,
             PillContent::Clock { .. } | PillContent::Weather { .. } | PillContent::Live { .. } => 220.0,
@@ -305,6 +310,7 @@ impl PillContent {
             PillContent::Power { low: false, .. } => CHARGING_ACCENT,
             PillContent::Power { low: true, .. } => LOW_ACCENT,
             PillContent::Capture { .. } | PillContent::Away { .. } => timer_accent(),
+            PillContent::Transfer { .. } => TRANSFER_ACCENT,
             PillContent::Rain { snow: false, .. } => RAIN_ACCENT,
             PillContent::Rain { snow: true, .. } => SNOW_ACCENT,
             PillContent::WeatherAlert { kind, .. } => alert_style(*kind).0,
@@ -995,6 +1001,7 @@ fn paint_layer(
         | PillContent::Game { .. }
         | PillContent::Usage { .. }
         | PillContent::Away { .. }
+        | PillContent::Transfer { .. }
         | PillContent::Capture { .. }
         | PillContent::Live { .. }
         | PillContent::App { .. } => {
@@ -1045,6 +1052,7 @@ fn paint_timer(ink: &Ink, front: &PillContent, w: f32, h: f32, s: &Scale) -> Res
         | PillContent::Game { .. }
         | PillContent::Usage { .. }
         | PillContent::Away { .. }
+        | PillContent::Transfer { .. }
         | PillContent::Capture { .. }
         | PillContent::Live { .. }
         | PillContent::App { .. } => {
@@ -1089,6 +1097,7 @@ pub fn paint_pill_content(ink: &Ink, c: &PillContent, w: f32, h: f32, s: &Scale)
         PillContent::Game { store, title, line, progress, art, done, paused, .. } => paint_game(ink, *store, (title, line), *progress, art.as_ref(), (*done, *paused), w, h, s),
         PillContent::Usage { app, text } => paint_usage(ink, app, text, w, h, s),
         PillContent::Away { count } => paint_away(ink, c, count, w, h, s),
+        PillContent::Transfer { kind, pct, detail, done } => paint_transfer(ink, *kind, *pct, detail, *done, w, h, s),
         PillContent::Capture { thumb, size } => paint_capture(ink, c, thumb.as_ref(), size, w, h, s),
         PillContent::Live { title, status, claude, state, action, .. } => paint_live(ink, c, (title, action), status, *claude, *state, w, h, s),
         PillContent::App { title, text, status, icon, ring, .. } => paint_app(ink, c, icon.as_ref(), (title, text), status, *ring, w, h, s),
@@ -1508,6 +1517,43 @@ fn paint_away(ink: &Ink, c: &PillContent, count: &str, w: f32, h: f32, s: &Scale
     let x = d(36.0) + head_w;
     let rest = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).ellipsis();
     ink.text(&format!(" · {count}"), rect(x, 0.0, (w - x - d(14.0)).max(0.0), h), &rest)
+}
+
+/// Explorer's copies: the shelf's documents' blue.
+pub const TRANSFER_ACCENT: (u8, u8, u8) = (0x3E, 0x91, 0xFF);
+
+/// The copy (or delete) glyph in the accent circle with the progress ring round it, as a game's
+/// download; then "Kopyalanıyor · %45 · 2 dk" in the media pill's type. Done: a tick, and
+/// "Kopyalama bitti".
+#[allow(clippy::too_many_arguments)]
+fn paint_transfer(ink: &Ink, kind: TransferKind, pct: u8, detail: &str, done: bool, w: f32, h: f32, s: &Scale) -> Result<()> {
+    let d = |v: f32| v * s.0;
+    let (r, g, b) = TRANSFER_ACCENT;
+    let (cx, cy) = (d(16.0), (h / 2.0).round());
+    // The ring takes the circle's edge while it runs.
+    let side = if done { d(24.0).round() } else { d(19.0).round() };
+    let dot = rect(cx - side / 2.0, cy - side / 2.0, side, side);
+    ink.rrect(dot, side / 2.0, rgba(r, g, b, 1.0))?;
+    let mark = match (done, kind) {
+        (true, _) => glyph(Icon::Check).to_string(),
+        // Segoe's Delete: a bin.
+        (false, TransferKind::Delete) => "\u{E74D}".to_string(),
+        (false, _) => glyph(Icon::Copy).to_string(),
+    };
+    ink.text(&mark, dot, &TextStyle::new(Face::Icons, Weight::Regular, side * 0.55, white(1.0)).centered())?;
+    if !done {
+        ink.ring(cx, cy, d(11.0), d(2.0), pct as f32 / 100.0, white(0.2), lighten((r, g, b)))?;
+    }
+    let head = TextStyle::new(Face::Text, Weight::SemiBold, d(12.5), white(1.0));
+    let word = if done { done_text(kind) } else { verb(kind) };
+    let x = d(36.0);
+    let head_w = ink.measure(word, &head)?;
+    ink.text(word, rect(x, 0.0, head_w + d(2.0), h), &head)?;
+    if done || detail.is_empty() {
+        return Ok(());
+    }
+    let rest = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).tabular().ellipsis();
+    ink.text(&format!(" · {detail}"), rect(x + head_w, 0.0, (w - x - head_w - d(14.0)).max(0.0), h), &rest)
 }
 
 /// Steam's blue, a step deeper so white reads on it; Epic's own is black and white: a light grey.

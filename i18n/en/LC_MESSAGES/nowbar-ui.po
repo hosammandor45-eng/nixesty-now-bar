@@ -3305,3 +3305,51 @@ msgstr "No music yet this week"
 #: ui/pages.slint
 msgid "Çalanlar bu bilgisayarda sayılır"
 msgstr "Counted on this PC"
+
+#: src/activities/transfer.rs
+msgid "Kopyalanıyor"
+msgstr "Copying"
+
+#: src/activities/transfer.rs
+msgid "Taşınıyor"
+msgstr "Moving"
+
+#: src/activities/transfer.rs
+msgid "Siliniyor"
+msgstr "Deleting"
+
+#: src/activities/transfer.rs
+msgid "Kopyalama bitti"
+msgstr "Copy finished"
+
+#: src/activities/transfer.rs
+msgid "Taşıma bitti"
+msgstr "Move finished"
+
+#: src/activities/transfer.rs
+msgid "Silme bitti"
+msgstr "Delete finished"
+
+#: src/activities/transfer.rs
+msgid "{} · 1 dk'dan az"
+msgstr "{} · under a min"
+
+#: src/settings_ui.rs
+msgid "Dosya kopyalama"
+msgstr "File copies"
+
+#: src/settings_ui.rs
+msgid "Kopyalama ilerlemesi"
+msgstr "Copy progress"
+
+#: src/settings_ui.rs
+msgid "Explorer kopyalar, taşır ya da silerken pilde yüzde ve kalan süre; penceresi küçültülse de"
+msgstr "While Explorer copies, moves or deletes, the percent and the time left in the pill; even with its window minimised"
+
+#: ui/pages.slint
+msgid "İlerlemeyi göster"
+msgstr "Show the progress"
+
+#: ui/pages.slint
+msgid "Explorer'ın penceresi küçültülse de"
+msgstr "Even with Explorer's window minimised"
