@@ -391,7 +391,12 @@ extern "system" fn card_input_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
     };
     let (x, y) = (x_of(lp), y_of(lp));
     match msg {
-        WM_MOUSEACTIVATE => LRESULT(MA_NOACTIVATE),
+        // A card that takes the keyboard (the picker, the question card) takes it back on a click
+        // when another window had it; the others never activate.
+        WM_MOUSEACTIVATE => {
+            let focusable = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) } as u32 & WS_EX_NOACTIVATE.0 == 0;
+            LRESULT(if focusable { MA_ACTIVATE as isize } else { MA_NOACTIVATE })
+        }
         WM_LBUTTONDOWN => {
             unsafe { SetCapture(hwnd) };
             card(CardEvent::Down { x, y })

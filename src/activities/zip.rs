@@ -64,13 +64,16 @@ struct Entry {
     offset: u64,
 }
 
-/// Writes `items` (files and folders) as a zip at `out`; each lands by its name, a folder with
-/// everything in it. `offset_s`: the PC's offset from UTC, for the entries' times.
-pub fn write_zip(out: &Path, items: &[PathBuf], offset_s: i64) -> io::Result<()> {
-    let mut w = BufWriter::new(File::create(out)?);
+/// Writes `items` (files and folders) as a zip into `file`, which is `out`; each lands by its
+/// name, a folder with everything in it. `offset_s`: the PC's offset from UTC, for the entries'
+/// times.
+pub fn write_zip(file: File, out: &Path, items: &[PathBuf], offset_s: i64) -> io::Result<()> {
+    // Beside the newest, the zip may be inside a folder it zips: read back, it would grow forever.
+    let own = std::fs::canonicalize(out).ok();
+    let mut w = BufWriter::new(file);
     let mut entries: Vec<Entry> = Vec::new();
     for (item, name) in items.iter().zip(entry_names(items)) {
-        add(&mut w, &mut entries, item, &name, offset_s)?;
+        add(&mut w, &mut entries, item, &name, offset_s, own.as_deref())?;
     }
     let start = w.stream_position()?;
     for e in &entries {
@@ -107,10 +110,11 @@ fn small(v: u64) -> io::Result<u32> {
     u32::try_from(v).map_err(|_| io::Error::other(TOO_BIG))
 }
 
-/// One file, or a folder and (depth first) everything in it; links are left out.
-fn add(w: &mut BufWriter<File>, entries: &mut Vec<Entry>, path: &Path, name: &str, offset_s: i64) -> io::Result<()> {
+/// One file, or a folder and (depth first) everything in it; links and the zip itself (`own`)
+/// are left out.
+fn add(w: &mut BufWriter<File>, entries: &mut Vec<Entry>, path: &Path, name: &str, offset_s: i64, own: Option<&Path>) -> io::Result<()> {
     let meta = std::fs::symlink_metadata(path)?;
-    if meta.file_type().is_symlink() {
+    if meta.file_type().is_symlink() || own.is_some_and(|own| std::fs::canonicalize(path).is_ok_and(|p| p == own)) {
         return Ok(());
     }
     let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs() as i64);
@@ -124,7 +128,7 @@ fn add(w: &mut BufWriter<File>, entries: &mut Vec<Entry>, path: &Path, name: &st
         children.sort();
         for child in children {
             let child_name = format!("{name}{}", child.file_name().unwrap_or_default().to_string_lossy());
-            add(w, entries, &child, &child_name, offset_s)?;
+            add(w, entries, &child, &child_name, offset_s, own)?;
         }
         return Ok(());
     }
@@ -224,7 +228,7 @@ mod tests {
         std::fs::write(d.join("Klasör").join("alt").join("iç.txt"), "iki").unwrap();
         std::fs::write(d.join("ekran.png"), [0x89, b'P', b'N', b'G', 1, 2, 3]).unwrap();
         let out = d.join("out.zip");
-        write_zip(&out, &[d.join("şarkı listesi.txt"), d.join("Klasör"), d.join("ekran.png")], 3 * 3600).unwrap();
+        write_zip(File::create(&out).unwrap(), &out, &[d.join("şarkı listesi.txt"), d.join("Klasör"), d.join("ekran.png")], 3 * 3600).unwrap();
         let bytes = std::fs::read(&out).unwrap();
         let entries = central(&bytes);
         let names: Vec<&str> = entries.iter().map(|e| e.0.as_str()).collect();
@@ -249,7 +253,20 @@ mod tests {
     fn live_zip() {
         let out = PathBuf::from(std::env::var_os("NOWBAR_ZIP_OUT").expect("NOWBAR_ZIP_OUT"));
         let items: Vec<PathBuf> = std::env::var("NOWBAR_ZIP_IN").expect("NOWBAR_ZIP_IN").split(';').map(PathBuf::from).collect();
-        write_zip(&out, &items, crate::app::tz_offset_s()).unwrap();
+        write_zip(File::create(&out).unwrap(), &out, &items, crate::app::tz_offset_s()).unwrap();
+    }
+
+    #[test]
+    fn a_zip_inside_a_folder_it_zips_leaves_itself_out() {
+        let d = dir("inside");
+        std::fs::create_dir_all(d.join("Tatil")).unwrap();
+        std::fs::write(d.join("Tatil").join("foto.jpg"), [1, 2, 3]).unwrap();
+        let out = d.join("Tatil").join("foto ve 1 dosya.zip");
+        write_zip(File::create(&out).unwrap(), &out, &[d.join("Tatil"), d.join("Tatil").join("foto.jpg")], 0).unwrap();
+        let bytes = std::fs::read(&out).unwrap();
+        let names: Vec<String> = central(&bytes).into_iter().map(|e| e.0).collect();
+        assert_eq!(names, ["Tatil/", "Tatil/foto.jpg", "foto.jpg"], "not itself, as it was being written");
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]

@@ -50,31 +50,64 @@ pub fn locate() -> Option<PathBuf> {
     find_claude(&std::env::var("PATH").unwrap_or_default(), &var("USERPROFILE"), &var("APPDATA"), Path::is_file)
 }
 
+/// The process answering, with the question it answers.
+type Slot = Arc<Mutex<Option<(u32, Child)>>>;
+
+/// The slot's process if it answers `run` (another question's stays where it is).
+fn take_run(slot: &Slot, run: u32) -> Option<Child> {
+    let mut s = slot.lock().ok()?;
+    if s.as_ref().is_some_and(|(r, _)| *r == run) { s.take().map(|(_, c)| c) } else { None }
+}
+
+/// Ends `child` and what it started: npm's claude.cmd is cmd.exe running node, and a kill of
+/// cmd.exe alone leaves node answering.
+fn end(mut child: Child) {
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let taskkill = PathBuf::from(std::env::var_os("SystemRoot").unwrap_or_else(|| r"C:\Windows".into())).join(r"System32\taskkill.exe");
+    let tree = Command::new(taskkill)
+        .args(["/T", "/F", "/PID", &child.id().to_string()])
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    if !tree.is_ok_and(|s| s.success()) {
+        let _ = child.kill();
+    }
+    let _ = child.wait();
+}
+
 #[derive(Default)]
 pub struct AskWorker {
     run: Arc<AtomicU32>,
-    child: Arc<Mutex<Option<Child>>>,
+    child: Slot,
 }
 
 impl AskWorker {
+    /// The question asked last: an answer for another is stale.
+    pub fn current(&self) -> u32 {
+        self.run.load(Ordering::SeqCst)
+    }
+
     /// Asks `question` (one at a time: a new one stops the last); the answer comes into `mailbox`,
     /// with `post` after each piece.
     pub fn ask(&self, question: String, mailbox: AskMailbox, post: fn()) {
         self.stop();
         let run = self.run.fetch_add(1, Ordering::SeqCst) + 1;
         let (current, child_slot) = (self.run.clone(), self.child.clone());
-        // Only the question still asked writes to the card.
+        // Only the question still asked writes to the card, checked under the box's lock: a new
+        // question's "Thinking" is never overwritten by the last one's words.
         let say = move |state: AskState, answer: Option<String>| {
+            let Ok(mut b) = mailbox.lock() else { return };
             if current.load(Ordering::SeqCst) != run {
                 return;
             }
-            if let Ok(mut b) = mailbox.lock() {
-                b.run = run;
-                b.state = state;
-                if let Some(a) = answer {
-                    b.answer = a;
-                }
+            b.run = run;
+            b.state = state;
+            if let Some(a) = answer {
+                b.answer = a;
             }
+            drop(b);
             post();
         };
         say(AskState::Thinking, Some(String::new()));
@@ -84,16 +117,19 @@ impl AskWorker {
                 return say(AskState::NoClaude, None);
             };
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-            let home = std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(std::env::temp_dir);
+            // An empty folder: no project's files or settings come with the question.
+            let here = std::env::temp_dir().join("nowbar-question");
+            let _ = std::fs::create_dir_all(&here);
+            // No tools and no MCP servers (--strict-mcp-config without a config: none start).
             let started = Command::new(&exe)
-                .args(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--tools", "", "--no-session-persistence"])
+                .args(["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--tools", "", "--strict-mcp-config", "--no-session-persistence"])
                 .args(["--settings", r#"{"disableAllHooks":true}"#, "--append-system-prompt", SYSTEM_HINT])
                 // Started from inside a Claude Code session, it would refuse to nest.
                 .env_remove("CLAUDECODE")
                 .env_remove("CLAUDE_CODE_ENTRYPOINT")
                 // Our own hook stays out of it even if hooks run (no live item for the card's question).
                 .env("NOWBAR_QUESTION", "1")
-                .current_dir(home)
+                .current_dir(here)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
@@ -111,24 +147,21 @@ impl AskWorker {
             }
             let Some(stdout) = child.stdout.take() else { return say(AskState::Failed, None) };
             if let Ok(mut slot) = child_slot.lock() {
-                *slot = Some(child);
+                *slot = Some((run, child));
             }
-            // A watchdog: an answer that never ends is stopped.
-            let (watch_slot, watch_run, watch_say) = (child_slot.clone(), run, say.clone());
-            let ended = Arc::new(std::sync::atomic::AtomicBool::new(false));
-            let watch_ended = ended.clone();
+            // A watchdog: an answer that never ends is stopped, and says so.
+            let timed_out = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let (watch_slot, watch_timed_out) = (child_slot.clone(), timed_out.clone());
             let _ = std::thread::Builder::new().name("question-watch".into()).spawn(move || {
                 std::thread::sleep(GIVE_UP_AFTER);
-                if !watch_ended.load(Ordering::SeqCst) {
-                    log(&format!("question {watch_run}: no answer in {} s", GIVE_UP_AFTER.as_secs()));
-                    if let Some(mut c) = watch_slot.lock().ok().and_then(|mut s| s.take()) {
-                        let _ = c.kill();
-                    }
-                    watch_say(AskState::TimedOut, None);
+                if let Some(c) = take_run(&watch_slot, run) {
+                    log(&format!("question {run}: no answer in {} s", GIVE_UP_AFTER.as_secs()));
+                    watch_timed_out.store(true, Ordering::SeqCst);
+                    end(c);
                 }
             });
             let (mut answer, mut deltas, mut last_post) = (String::new(), false, Instant::now() - POST_EVERY);
-            let mut end: Option<AskState> = None;
+            let mut outcome: Option<AskState> = None;
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
                 match parse_line(&line) {
@@ -139,7 +172,7 @@ impl AskWorker {
                     Some(Event::Message(t)) if !deltas => answer = t,
                     Some(Event::Message(_)) => continue,
                     Some(Event::Done { text, error }) => {
-                        end = Some(match (error, needs_login(&text)) {
+                        outcome = Some(match (error, needs_login(&text)) {
                             (true, true) => AskState::NotSignedIn,
                             (true, false) => AskState::Failed,
                             (false, _) => {
@@ -156,26 +189,25 @@ impl AskWorker {
                     say(AskState::Writing, Some(answer.clone()));
                 }
             }
-            ended.store(true, Ordering::SeqCst);
-            if let Some(mut c) = child_slot.lock().ok().and_then(|mut s| s.take()) {
+            if let Some(mut c) = take_run(&child_slot, run) {
                 let _ = c.wait();
             }
-            let end = end.unwrap_or(AskState::Failed);
-            if end != AskState::Done {
-                log(&format!("question {run}: {end:?}"));
+            let state = outcome.unwrap_or(if timed_out.load(Ordering::SeqCst) { AskState::TimedOut } else { AskState::Failed });
+            if state != AskState::Done {
+                log(&format!("question {run}: {state:?}"));
             }
-            say(end, (end == AskState::Done).then_some(answer));
+            say(state, (state == AskState::Done).then_some(answer));
         });
         if let Err(e) = spawned {
             log(&format!("question: no thread ({e})"));
         }
     }
 
-    /// The question asked stops (the card closed, or another came).
+    /// The question asked stops (the card closed, or another came); taskkill runs off the UI thread.
     pub fn stop(&self) {
         self.run.fetch_add(1, Ordering::SeqCst);
-        if let Some(mut c) = self.child.lock().ok().and_then(|mut s| s.take()) {
-            let _ = c.kill();
+        if let Some((_, c)) = self.child.lock().ok().and_then(|mut s| s.take()) {
+            let _ = std::thread::Builder::new().name("question-stop".into()).spawn(move || end(c));
         }
     }
 }

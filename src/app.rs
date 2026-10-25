@@ -27,7 +27,7 @@ use crate::render::pill::{MatchPill, MomentKind, PillMoment, PillTeam, PillThumb
 use crate::render::card::{AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardTeam, ClaudeAsk, ClaudeCard, GameCard, LiveCard, MatchCard, ShelfCard, ShelfTile, WeatherCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP, LYRIC_MOVE_MS};
 use crate::activities::brief::{date_line, day_key, due, first_name, greeting, pick_matches, rain_later, should_auto_open};
 use crate::platform::session::{brief_day, set_brief_day, windows_full_name};
-use crate::activities::shelf::{op_label, ops, Shelf, ShelfOp};
+use crate::activities::shelf::{op_label, ops, FileKind, Shelf, ShelfOp};
 use crate::activities::shelf_tools::{shrunk_name, unique_path, zip_name};
 use crate::activities::shelf_worker::{ShelfMailbox, ShelfWorker};
 use crate::activities::shelf_tools_worker::{Done as ToolDone, Job as ToolJob, ToolMailbox, ToolWorker, Why as ToolWhy};
@@ -254,13 +254,13 @@ pub fn drag_paths(shelf: &Shelf, tile: Option<usize>) -> Vec<PathBuf> {
     }
 }
 
-/// Plays one of Windows' sounds (C:\Windows\Media\<name>.wav), without waiting.
 /// The away card from a report: the span and the first rows, in local time.
 pub fn away_card(r: &AwayReport, offset_s: i64) -> AwayCard {
     let rows = r.items.iter().take(away::CARD_ROWS).map(|i| AwayRow { kind: i.kind, text: i.text.clone(), time: away::hhmm(i.at_utc + offset_s), crest: None }).collect();
     AwayCard { span: away::span_text(r.since_utc + offset_s, r.until_utc + offset_s), rows, more: r.items.len().saturating_sub(away::CARD_ROWS) }
 }
 
+/// Plays one of Windows' sounds (C:\Windows\Media\<name>.wav), without waiting.
 fn play_windows_sound(name: &str) {
     let windir = std::env::var("WINDIR").unwrap_or_else(|_| r"C:\Windows".into());
     let sound = HSTRING::from(format!(r"{windir}\Media\{name}.wav"));
@@ -769,6 +769,8 @@ pub struct App {
     /// The question card: the field, Claude's answer (as its worker last left it), the caret's
     /// blink, the answer's scroll (`None`: its end), when "Kopyala" was last clicked (ms).
     question: Field,
+    /// The question last asked, while the field still holds it.
+    question_asked: Option<String>,
     question_worker: AskWorker,
     question_box: AskMailbox,
     question_seen: AskBox,
@@ -814,6 +816,7 @@ pub struct App {
     shelf_status: Option<(ShelfOp, String, u64)>,
     tool_worker: ToolWorker,
     tool_mailbox: ToolMailbox,
+    share_box: crate::platform::share::ShareMailbox,
     /// The files the shelf's tools made lately (the last 50).
     shelf_made: Vec<PathBuf>,
     updater: Updater,
@@ -1003,6 +1006,7 @@ impl App {
             usage_moment: None,
             app_icons: HashMap::new(),
             question: Field::default(),
+            question_asked: None,
             question_worker: AskWorker::default(),
             question_box: AskMailbox::default(),
             question_seen: AskBox::default(),
@@ -1034,6 +1038,7 @@ impl App {
             shelf_status: None,
             tool_worker,
             tool_mailbox,
+            share_box: Default::default(),
             shelf_made: Vec::new(),
             updater,
             update_mailbox,
@@ -2104,16 +2109,15 @@ impl App {
     fn shelf_tool(&mut self, op: ShelfOp) {
         let targets: Vec<PathBuf> = self.shelf.targets().iter().map(|i| i.path.clone()).collect();
         match op {
+            // The files are looked up off this thread (a network share can take a while); the
+            // sheet opens when they're found. By the shelf's kinds: no disk here.
             ShelfOp::Share => {
-                let files: Vec<PathBuf> = targets.into_iter().filter(|p| p.is_file()).collect();
+                let files: Vec<PathBuf> = self.shelf.targets().iter().filter(|i| i.kind != FileKind::Folder).map(|i| i.path.clone()).collect();
                 let title = match files.as_slice() {
                     [one] => one.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned()),
                     many => trf("{} dosya", &[&many.len()]),
                 };
-                if let Err(e) = crate::platform::share::share_files(self.ui.card_window.hwnd, &files, &title) {
-                    log(&format!("shelf: share failed ({e})"));
-                    self.shelf_say(op, tr("Paylaşılamadı"));
-                }
+                crate::platform::share::prepare(files, title, self.share_box.clone(), crate::platform::windows::post_shelf_tool);
             }
             // One at a time: a chip still working takes no second click.
             _ if self.shelf_status.as_ref().is_some_and(|(_, _, until)| *until == u64::MAX) => {}
@@ -2156,6 +2160,16 @@ impl App {
 
     /// What the shelf's tools finished: text onto the clipboard, the chip says how it went.
     fn take_tools(&mut self) -> Result<()> {
+        // The share's files, found: the sheet opens over the card.
+        if let Some(prepared) = self.share_box.lock().ok().and_then(|mut m| m.take()) {
+            let shown = prepared.map(|p| crate::platform::share::show(self.ui.card_window.hwnd, p));
+            if !matches!(shown, Some(Ok(()))) {
+                if let Some(Err(e)) = shown {
+                    log(&format!("shelf: share failed ({e})"));
+                }
+                self.shelf_say(ShelfOp::Share, tr("Paylaşılamadı"));
+            }
+        }
         let done: Vec<ToolDone> = self.tool_mailbox.lock().map(|mut m| std::mem::take(&mut *m)).unwrap_or_default();
         for d in done {
             match d {
@@ -3407,7 +3421,8 @@ impl App {
     fn open_question(&mut self) -> Result<()> {
         match (self.open, self.card_state) {
             (Some(OpenCard::Question), CardState::Open | CardState::Opening) => self.close_card(),
-            (Some(_), CardState::Open | CardState::Opening) => {
+            // One still closing goes at once: its morph's end would find the question card.
+            (Some(_), CardState::Open | CardState::Opening | CardState::Closing) => {
                 self.hide_card_now()?;
                 self.open_card(OpenCard::Question, false)
             }
@@ -3415,8 +3430,16 @@ impl App {
         }
     }
 
-    /// A character typed into the question card.
+    /// A character typed into the question card. The question asked stays shown with its answer;
+    /// typing (or a paste) starts a new one in its place, as a selected search box would.
     fn question_key(&mut self, unit: u16) -> Result<()> {
+        let types = unit >= 0x20 && unit != 0x7F || unit == 0x16;
+        if types && self.question_asked.as_deref().is_some_and(|q| q == self.question.text) {
+            self.question.clear();
+        }
+        if types {
+            self.question_asked = None;
+        }
         match self.question.key(unit) {
             FieldEdit::Changed => {}
             FieldEdit::Submit => {
@@ -3425,6 +3448,7 @@ impl App {
                     return Ok(());
                 }
                 log(&format!("question: asked ({} characters)", text.chars().count()));
+                self.question_asked = Some(self.question.text.clone());
                 self.question_scroll = None;
                 self.question_worker.ask(text, self.question_box.clone(), crate::platform::windows::post_question);
             }
@@ -3459,8 +3483,10 @@ impl App {
 
     /// Claude's answer moved on.
     fn take_question(&mut self) -> Result<()> {
-        if let Ok(b) = self.question_box.lock() {
-            self.question_seen = b.clone();
+        // A stopped question's last words are no answer to this one.
+        let fresh = self.question_box.lock().ok().map(|b| b.clone());
+        if let Some(b) = fresh.filter(|b| b.run == self.question_worker.current()) {
+            self.question_seen = b;
         }
         self.refresh()
     }
@@ -3522,13 +3548,13 @@ impl App {
     /// The week's music card, up to today.
     fn music_card(&self) -> MusicCard {
         let day = local_day(unix_now(), tz_offset_s());
-        let (secs, plays) = self.music.week_total(day);
+        let (secs, _) = self.music.week_total(day);
         let tracks = self.music.top_tracks(day, 5);
         let artists = self.music.top_artists(day, 3);
         let rgb = |c: [u8; 3]| (c[0], c[1], c[2]);
         MusicCard {
             total: if secs == 0 { trf("{} dk", &[&0]) } else { played_text(secs as i64) },
-            caption: week_caption(plays, artists.first().map(|(a, _)| a.as_str())),
+            caption: week_caption(self.music.week_tracks(day), artists.first().map(|(a, _)| a.as_str())),
             accent: tracks.first().map_or(MUSIC_ACCENT, |t| rgb(t.accent)),
             tracks: tracks.iter().map(|t| MusicRow { title: t.title.clone(), artist: t.artist.clone(), plays: plays_text(t.plays), accent: rgb(t.accent) }).collect(),
             artists: artists.into_iter().map(|(a, s)| (a, played_text(s as i64))).collect(),
@@ -4412,6 +4438,10 @@ impl App {
             // The answer scrolls; back at its end, it follows the words again.
             UiEvent::Card(CardEvent::Wheel { delta, .. }) if self.open == Some(OpenCard::Question) => {
                 let overflow = self.ui.card.answer_overflow();
+                // An answer that fits doesn't scroll (and keeps following its end as it grows).
+                if overflow <= 0.0 {
+                    return Ok(());
+                }
                 let at = self.question_scroll.unwrap_or(overflow) - delta as f32 / 120.0 * self.ui.card_scale.px(3.0 * crate::render::card::QUESTION_LINE);
                 self.question_scroll = (at < overflow - 0.5).then_some(at.max(0.0));
                 self.refresh()

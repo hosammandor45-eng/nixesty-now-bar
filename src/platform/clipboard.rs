@@ -8,10 +8,24 @@ use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalSize, Global
 /// CF_UNICODETEXT.
 const UNICODE_TEXT: u32 = 13;
 
+/// Opens the clipboard, waiting a little while another program (a clipboard manager) holds it.
+fn open(owner: HWND) -> Result<()> {
+    let mut tries = 0;
+    loop {
+        match unsafe { OpenClipboard(Some(owner)) } {
+            Err(_) if tries < 5 => {
+                tries += 1;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            other => return other,
+        }
+    }
+}
+
 /// The clipboard's Unicode text, if it holds some (the question card's Ctrl+V).
 pub fn get_text(owner: HWND) -> Option<String> {
     unsafe {
-        OpenClipboard(Some(owner)).ok()?;
+        open(owner).ok()?;
         let read = || -> Option<String> {
             let memory = HGLOBAL(GetClipboardData(UNICODE_TEXT).ok()?.0);
             let units = GlobalSize(memory) / 2;
@@ -42,7 +56,7 @@ pub fn set_text(owner: HWND, text: &str) -> Result<()> {
         }
         std::ptr::copy_nonoverlapping(utf16.as_ptr(), to, utf16.len());
         let _ = GlobalUnlock(memory);
-        if let Err(e) = OpenClipboard(Some(owner)) {
+        if let Err(e) = open(owner) {
             let _ = GlobalFree(Some(memory));
             return Err(e);
         }

@@ -153,6 +153,14 @@ impl MusicLog {
         all
     }
 
+    /// How many tracks the week played (each once, however often).
+    pub fn week_tracks(&self, day: i64) -> usize {
+        let mut seen: Vec<String> = self.week(day).flat_map(|d| &d.tracks).map(|t| key(&t.title, &t.artist)).collect();
+        seen.sort();
+        seen.dedup();
+        seen.len()
+    }
+
     /// The week's seconds listened and plays.
     pub fn week_total(&self, day: i64) -> (u64, u32) {
         self.week(day).flat_map(|d| &d.tracks).fold((0, 0), |(s, p), t| (s + t.secs, p + t.plays))
@@ -184,9 +192,9 @@ pub fn plays_text(n: u32) -> String {
     if n == 1 { tr("1 kez").to_string() } else { trf("{} kez", &[&n]) }
 }
 
-/// "142 parça · en çok Tarkan"; without an artist, the count alone.
-pub fn week_caption(plays: u32, top_artist: Option<&str>) -> String {
-    let count = if plays == 1 { tr("1 parça").to_string() } else { trf("{} parça", &[&plays]) };
+/// "142 parça · en çok Tarkan" (the week's tracks, each once); without an artist, the count alone.
+pub fn week_caption(tracks: usize, top_artist: Option<&str>) -> String {
+    let count = if tracks == 1 { tr("1 parça").to_string() } else { trf("{} parça", &[&tracks]) };
     match top_artist {
         Some(a) => trf("{} · en çok {}", &[&count, &a]),
         None => count,
@@ -270,6 +278,7 @@ mod tests {
         assert_eq!(log.top_tracks(DAY, 1).len(), 1);
         assert_eq!(log.top_artists(DAY, 3), [("Tarkan".to_string(), 1_400), ("Barış Manço".to_string(), 900)]);
         assert_eq!(log.week_total(DAY), (2_300, 11));
+        assert_eq!(log.week_tracks(DAY), 3, "Şımarık once, whatever its case, and Eski's week is over");
     }
 
     #[test]

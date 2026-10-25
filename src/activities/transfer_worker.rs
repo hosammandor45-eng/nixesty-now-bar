@@ -85,6 +85,18 @@ unsafe fn words(uia: &IUIAutomation, hwnd: HWND) -> Vec<String> {
     }
 }
 
+/// One look: what shows now and what finished, from what showed (`last`), whether a dialog is
+/// up (`seen`) and what it said (`read`; `None` when it says no percent, as when it asks to
+/// replace or skip a file). Only a dialog gone nearly done has finished; one still up but silent
+/// shows as it was.
+pub fn step(last: Option<TransferNow>, seen: bool, read: Option<TransferNow>, on: bool) -> (Option<TransferNow>, Option<TransferKind>) {
+    match (seen, read) {
+        (true, Some(now)) => (Some(now), None),
+        (true, None) => (last, None),
+        (false, _) => (None, last.filter(|was| on && finished(was.pct, was.left_s)).map(|was| was.kind)),
+    }
+}
+
 /// Whether a dialog that went away had finished: nearly there at the last look.
 pub fn finished(pct: u8, left_s: Option<u64>) -> bool {
     pct >= 90 || left_s.is_some_and(|s| s <= 3)
@@ -100,7 +112,7 @@ pub fn start(mailbox: TransferMailbox, post: fn()) {
             std::thread::sleep(LOOK_EVERY);
             let on = crate::settings::current().enabled && crate::settings::current().transfer_on;
             let seen = on.then(dialog).flatten();
-            let now = seen.and_then(|hwnd| {
+            let read = seen.and_then(|hwnd| {
                 let pct = percent_in(&title_of(hwnd)).or_else(|| uia.as_ref().and_then(|u| unsafe { bars_percent(u, hwnd) }))?;
                 let kind = match kind_of {
                     Some((h, k)) if h == hwnd.0 as isize => k,
@@ -114,15 +126,11 @@ pub fn start(mailbox: TransferMailbox, post: fn()) {
                 pace.push(started.elapsed().as_millis() as u64, pct as f32);
                 Some(TransferNow { kind, pct, left_s: pace.left_s(), dialog: hwnd.0 as isize })
             });
-            let gone = match (last, now) {
-                (Some(was), None) => {
-                    pace = Pace::default();
-                    kind_of = None;
-                    // Off by the setting isn't finished.
-                    (on && finished(was.pct, was.left_s)).then_some(was.kind)
-                }
-                _ => None,
-            };
+            let (now, gone) = step(last, seen.is_some(), read, on);
+            if seen.is_none() {
+                pace = Pace::default();
+                kind_of = None;
+            }
             if now == last && gone.is_none() {
                 continue;
             }
@@ -142,6 +150,21 @@ pub fn start(mailbox: TransferMailbox, post: fn()) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn at(pct: u8, left_s: Option<u64>) -> Option<TransferNow> {
+        Some(TransferNow { kind: TransferKind::Copy, pct, left_s, dialog: 7 })
+    }
+
+    #[test]
+    fn a_dialog_it_cant_read_is_still_there() {
+        // "Dosya Değiştir veya Atla" at 92 %: no percent to read, the dialog still up.
+        assert_eq!(step(at(92, Some(20)), true, None, true), (at(92, Some(20)), None), "as it was, not finished");
+        assert_eq!(step(at(92, Some(20)), false, None, true), (None, Some(TransferKind::Copy)), "gone nearly done: finished");
+        assert_eq!(step(at(40, Some(90)), false, None, true), (None, None), "gone halfway: cancelled");
+        assert_eq!(step(None, true, None, true), (None, None), "never read: nothing to show");
+        assert_eq!(step(at(92, None), false, None, false), (None, None), "turned off isn't finished");
+        assert_eq!(step(at(10, None), true, at(12, Some(80)), true), (at(12, Some(80)), None));
+    }
 
     #[test]
     fn a_dialog_that_went_away_nearly_done_had_finished() {

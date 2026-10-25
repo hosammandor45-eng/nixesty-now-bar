@@ -89,6 +89,9 @@ impl Shelf {
             added += 1;
         }
         self.items.truncate(SHELF_MAX);
+        // One pushed off is no longer picked: back later, it comes as new.
+        let items = &self.items;
+        self.selected.retain(|p| items.iter().any(|i| key(&i.path) == key(p)));
         added
     }
 
@@ -330,6 +333,18 @@ mod tests {
         assert!(!s.is_selected(0), "cleared with the shelf");
         s.toggle(9);
         assert!(s.targets().len() == 1, "no tile there");
+    }
+
+    #[test]
+    fn a_file_pushed_off_the_shelf_comes_back_unselected() {
+        let mut s = Shelf::default();
+        for i in 0..SHELF_MAX {
+            s.add(&[PathBuf::from(format!(r"C:\f{i}.txt"))], no_dirs);
+        }
+        s.toggle(SHELF_MAX - 1);
+        s.add(&files(&[r"C:\yeni.txt"]), no_dirs);
+        s.add(&files(&[r"C:\f0.txt"]), no_dirs);
+        assert!(!s.is_selected(0), "f0 was pushed off: it comes back as new");
     }
 
     #[test]

@@ -2,6 +2,7 @@
 //! recogniser (Windows.Media.Ocr, offline), pictures shrunk to JPEGs (Windows' imaging), files
 //! zipped (zip.rs). Nothing leaves the PC.
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
@@ -150,11 +151,22 @@ fn read_text(path: &Path) -> Result<(String, Option<String>), Why> {
 fn shrink_all(pictures: &[(PathBuf, PathBuf)]) -> Done {
     let (mut files, mut not_smaller, mut failed) = (Vec::new(), 0, None);
     for (src, dest) in pictures {
-        let fallback = || unique_path(&made_dir(), &dest.file_name().unwrap_or_default().to_string_lossy(), Path::exists);
-        let made = shrink(src, dest).or_else(|e| {
-            log(&format!("shelf tools: can't write beside the picture ({e}), into the Now Bar's folder"));
-            let _ = std::fs::create_dir_all(made_dir());
-            shrink(src, &fallback())
+        let made = shrunk(src).and_then(|(w, h, bgr)| {
+            let write = |at: &Path| unsafe { write_jpeg(at, w, h, &bgr) }.inspect_err(|_| {
+                let _ = std::fs::remove_file(at);
+            });
+            // Only a folder that takes no file sends it to the Now Bar's.
+            let at = match write(dest) {
+                Ok(()) => dest.clone(),
+                Err(e) => {
+                    log(&format!("shelf tools: can't write beside the picture ({e}), into the Now Bar's folder"));
+                    let _ = std::fs::create_dir_all(made_dir());
+                    let fallback = unique_path(&made_dir(), &dest.file_name().unwrap_or_default().to_string_lossy(), Path::exists);
+                    write(&fallback)?;
+                    fallback
+                }
+            };
+            Ok(smaller(src, at))
         });
         match made {
             Ok(Some(path)) => files.push(path),
@@ -171,9 +183,9 @@ fn shrink_all(pictures: &[(PathBuf, PathBuf)]) -> Done {
     }
 }
 
-/// `src` as a JPEG at `dest`, its long side at most 1920 and transparency on white; `None` (and
-/// nothing left behind) when that's no smaller than the picture.
-fn shrink(src: &Path, dest: &Path) -> windows::core::Result<Option<PathBuf>> {
+/// `src`'s pixels upright, its long side at most 1920, transparency on white: JPEG's BGR, and its
+/// width and height.
+fn shrunk(src: &Path) -> windows::core::Result<(u32, u32, Vec<u8>)> {
     let decoder = decoder_of(src)?;
     let (pw, ph) = (decoder.PixelWidth()?, decoder.PixelHeight()?);
     let (ow, oh) = (decoder.OrientedPixelWidth()?, decoder.OrientedPixelHeight()?);
@@ -191,17 +203,17 @@ fn shrink(src: &Path, dest: &Path) -> windows::core::Result<Option<PathBuf>> {
     if pixels.len() != (w * h * 4) as usize {
         return Err(windows::Win32::Foundation::E_UNEXPECTED.into());
     }
-    let written = unsafe { write_jpeg(dest, w, h, &flatten_on_white(&pixels)) };
-    if let Err(e) = written {
-        let _ = std::fs::remove_file(dest);
-        return Err(e);
-    }
+    Ok((w, h, flatten_on_white(&pixels)))
+}
+
+/// The JPEG at `made`, or `None` (and nothing left behind) when it's no smaller than `src`.
+fn smaller(src: &Path, made: PathBuf) -> Option<PathBuf> {
     let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
-    if size(dest) >= size(src) {
-        let _ = std::fs::remove_file(dest);
-        return Ok(None);
+    if size(&made) >= size(src) {
+        let _ = std::fs::remove_file(&made);
+        return None;
     }
-    Ok(Some(dest.to_path_buf()))
+    Some(made)
 }
 
 /// BGR pixels as a JPEG at Windows' default quality (0.9).
@@ -227,23 +239,25 @@ unsafe fn write_jpeg(path: &Path, w: u32, h: u32, bgr: &[u8]) -> windows::core::
 
 /// `files` zipped at `out`, or in the Now Bar's folder when `out`'s takes nothing.
 fn zip(files: &[PathBuf], out: &Path) -> Result<PathBuf, Why> {
-    let write = |at: &Path| {
-        let written = write_zip(at, files, crate::app::tz_offset_s());
-        if let Err(e) = &written {
-            // The error's kind only: its words may carry a file's name.
-            log(&format!("shelf tools: can't zip ({:?})", e.kind()));
-            let _ = std::fs::remove_file(at);
+    // Only a folder that takes no file sends it to the Now Bar's; a file that won't read fails it.
+    // The errors' kinds only: their words may carry a file's name.
+    let (file, at) = match File::create(out) {
+        Ok(f) => (f, out.to_path_buf()),
+        Err(e) => {
+            log(&format!("shelf tools: can't write the zip beside the files ({:?}), into the Now Bar's folder", e.kind()));
+            let _ = std::fs::create_dir_all(made_dir());
+            let fallback = unique_path(&made_dir(), &out.file_name().unwrap_or_default().to_string_lossy(), Path::exists);
+            (File::create(&fallback).map_err(|_| Why::Unwritable)?, fallback)
         }
-        written
     };
-    match write(out) {
-        Ok(()) => return Ok(out.to_path_buf()),
-        Err(e) if e.to_string() == TOO_BIG => return Err(Why::TooBig),
-        Err(_) => {}
+    match write_zip(file, &at, files, crate::app::tz_offset_s()) {
+        Ok(()) => Ok(at),
+        Err(e) => {
+            log(&format!("shelf tools: can't zip ({:?})", e.kind()));
+            let _ = std::fs::remove_file(&at);
+            Err(if e.to_string() == TOO_BIG { Why::TooBig } else { Why::Unreadable })
+        }
     }
-    let _ = std::fs::create_dir_all(made_dir());
-    let fallback = unique_path(&made_dir(), &out.file_name().unwrap_or_default().to_string_lossy(), Path::exists);
-    write(&fallback).map(|()| fallback).map_err(|_| Why::Unwritable)
 }
 
 #[cfg(test)]
@@ -272,8 +286,8 @@ mod tests {
             [z as u8, (z >> 8) as u8, (z >> 16) as u8, 255]
         });
         let dest = d.join("büyük (küçük).jpg");
-        let made = shrink(&src, &dest).expect("shrunk").expect("smaller");
-        assert_eq!(made, dest);
+        let done = shrink_all(&[(src.clone(), dest.clone())]);
+        assert!(matches!(&done, Done::Made { files, not_smaller: 0, .. } if *files == [dest.clone()]), "beside the picture, smaller");
         let decoder = decoder_of(&dest).unwrap();
         assert_eq!((decoder.PixelWidth().unwrap(), decoder.PixelHeight().unwrap()), (1920, 960));
         let _ = std::fs::remove_dir_all(&d);
@@ -286,8 +300,12 @@ mod tests {
         let src = d.join("ikon.png");
         write_test_png(&src, 16, 16, |_, _| [255, 0, 0, 255]);
         let dest = d.join("ikon (küçük).jpg");
-        assert_eq!(shrink(&src, &dest).expect("read"), None, "a 16 px PNG is smaller than any JPEG");
+        let done = shrink_all(&[(src, dest.clone())]);
+        assert!(matches!(&done, Done::Made { files, not_smaller: 1, .. } if files.is_empty()), "a 16 px PNG is smaller than any JPEG");
         assert!(!dest.exists(), "nothing left behind");
+        let missing = shrink_all(&[(d.join("yok.png"), d.join("yok (küçük).jpg"))]);
+        assert!(matches!(missing, Done::Failed { why: Why::Unreadable, .. }), "a picture that won't open isn't written anywhere");
+        assert!(!made_dir().join("yok (küçük).jpg").exists());
         let _ = std::fs::remove_dir_all(&d);
     }
 
@@ -299,6 +317,9 @@ mod tests {
         std::fs::write(d.join("Klasör").join("iç.txt"), "iki").unwrap();
         let out = d.join("şarkı listesi ve 1 dosya.zip");
         assert_eq!(zip(&[d.join("şarkı listesi.txt"), d.join("Klasör")], &out), Ok(out.clone()));
+        let gone = d.join("eksik.zip");
+        assert_eq!(zip(&[d.join("yok.txt")], &gone), Err(Why::Unreadable), "a file that won't read: no zip, and not retried elsewhere");
+        assert!(!gone.exists());
         let bytes = std::fs::read(&out).unwrap();
         assert_eq!(&bytes[..4], b"PK\x03\x04", "a zip");
         let has = |name: &str| bytes.windows(name.len()).any(|w| w == name.as_bytes());
