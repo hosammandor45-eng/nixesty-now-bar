@@ -157,6 +157,10 @@ fn claude_hook(asks: bool) {
     // A hook's JSON is small; a runaway one is cut, not waited on.
     let mut text = String::new();
     let _ = std::io::stdin().take(1 << 20).read_to_string(&mut text);
+    // The question card's own `claude -p` (its hooks are off; this if they run anyway): no live item.
+    if std::env::var_os("NOWBAR_QUESTION").is_some() {
+        return;
+    }
     let Ok(mut hook) = serde_json::from_str::<serde_json::Value>(&text) else { return };
     let event = hook["hook_event_name"].as_str().unwrap_or("").to_string();
     if event == "UserPromptSubmit" {

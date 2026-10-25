@@ -430,6 +430,14 @@ impl Ink<'_> {
         Ok(m.widthIncludingTrailingWhitespace)
     }
 
+    /// Height in pixels of `s` wrapped at `w` in `st`.
+    pub fn text_height(&self, s: &str, w: f32, st: &TextStyle) -> Result<f32> {
+        let layout = self.layout(s, w, 100_000.0, &TextStyle { ellipsis: false, wrap: true, ..*st })?;
+        let mut m = DWRITE_TEXT_METRICS::default();
+        unsafe { layout.GetMetrics(&mut m)? };
+        Ok(m.height)
+    }
+
     /// Whether `s`, wrapped in `st`, fits `w` × `h` whole (nothing below the box).
     pub fn fits(&self, s: &str, w: f32, h: f32, st: &TextStyle) -> Result<bool> {
         let layout = self.layout(s, w, h, &TextStyle { ellipsis: false, ..*st })?;

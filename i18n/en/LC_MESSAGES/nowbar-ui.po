@@ -3353,3 +3353,55 @@ msgstr "Show the progress"
 #: ui/pages.slint
 msgid "Explorer'ın penceresi küçültülse de"
 msgstr "Even with Explorer's window minimised"
+
+#: src/app.rs
+msgid "Claude Code bu bilgisayarda bulunamadı."
+msgstr "Claude Code wasn't found on this PC."
+
+#: src/app.rs
+msgid "Claude Code'a giriş yapılmamış: terminalde claude yazıp /login ile bir kez gir."
+msgstr "Claude Code isn't signed in: type claude in a terminal and sign in once with /login."
+
+#: src/app.rs
+msgid "Claude yanıt veremedi."
+msgstr "Claude couldn't answer."
+
+#: src/app.rs
+msgid "Yanıt gelmedi."
+msgstr "No answer came."
+
+#: src/app.rs
+msgid "Kopyala"
+msgstr "Copy"
+
+#: src/settings_ui.rs
+msgid "Claude'a sor"
+msgstr "Ask Claude"
+
+#: src/settings_ui.rs
+msgid "Kartta bir yazı kutusu açar, cevap Claude Code'dan akar; pile Ctrl ile tıklamak da açar"
+msgstr "Opens a text box on the card, the answer flows in from Claude Code; Ctrl and a click on the pill opens it too"
+
+#: src/render/card.rs
+msgid "Enter ile sor"
+msgstr "Enter to ask"
+
+#: src/render/card.rs
+msgid "Bir şey sor…"
+msgstr "Ask something…"
+
+#: src/render/card.rs
+msgid "Düşünüyor…"
+msgstr "Thinking…"
+
+#: ui/pages.slint
+msgid "2 kısayol"
+msgstr "2 shortcuts"
+
+#: ui/pages.slint
+msgid "soru kartını açar"
+msgstr "opens the question card"
+
+#: ui/pages.slint
+msgid "ya da pile Ctrl ile tıkla"
+msgstr "or Ctrl and a click on the pill"

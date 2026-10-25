@@ -12,7 +12,7 @@ use windows::Win32::Media::Audio::{PlaySoundW, SND_ASYNC, SND_FILENAME, SND_NODE
 use windows::Win32::System::SystemInformation::GetTickCount64;
 use windows::Win32::UI::Accessibility::HWINEVENTHOOK;
 use windows::Win32::UI::HiDpi::GetDpiForWindow;
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, VK_RETURN};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_ESCAPE, VK_LBUTTON, VK_MBUTTON, VK_RBUTTON, VK_RETURN};
 use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, KillTimer, PostQuitMessage, SetTimer};
 
 use crate::i18n::{percent, tr, trc, trf};
@@ -77,11 +77,14 @@ use crate::platform::audio::{
 };
 use crate::platform::autostart::{autostart_enabled, follow_exe, set_autostart};
 use crate::platform::fullscreen::{foreground_exe, fullscreen_now, monitor_of, never_fullscreen, ForegroundMoveHook};
-use crate::platform::hotkey::register_hotkey;
+use crate::platform::hotkey::{register_hotkey, register_question_hotkey};
+use crate::activities::question::{lines_estimate, plain, Edit as FieldEdit, Field};
+use crate::activities::question_worker::{AskBox, AskMailbox, AskState, AskWorker};
+use crate::render::card::{QuestionCard, QuestionShow};
 use crate::platform::dragdrop::{self, DropZone};
 use crate::platform::log::log;
 use crate::platform::taskbar::{self, ItemsMailbox};
-use crate::platform::tray::{MENU_MUSIC, MENU_WELLBEING,
+use crate::platform::tray::{MENU_MUSIC, MENU_QUESTION, MENU_WELLBEING,
     create_tray, remove_tray, show_menu, MENU_AUTOSTART, MENU_BRIEF, MENU_MATCH_HIDE, MENU_MATCH_OPEN, MENU_QUIT, MENU_SETTINGS, MENU_STOPWATCH, MENU_TIMER, MENU_UPDATE,
 };
 use crate::platform::windows::{post_buds, post_effects_changed, post_matches, post_media, watch_foreground, CardEvent, CardWindow, MainWindow, PillEvent, PillWindow, UiEvent};
@@ -151,6 +154,12 @@ const WALLPAPER_EVERY_MS: u32 = 600_000;
 const TIMER_MUSIC: usize = 17;
 const MUSIC_EVERY_MS: u32 = 30_000;
 const MUSIC_SAVE_MS: u64 = 300_000;
+/// The question card's caret blinks at Windows' own pace.
+const TIMER_CARET: usize = 18;
+const CARET_BLINK_MS: u32 = 530;
+/// Characters a line of the question card's answer holds, about (13.5 px over 330 DIP; a little
+/// short, so the area is rather too tall than cut).
+const ANSWER_LINE_CHARS: usize = 46;
 const BAR_CHECK_MS: u32 = 2000;
 const METER_MS: u32 = 50;
 /// A goal moment plays this long; a red card or a disallowed goal shorter.
@@ -189,12 +198,20 @@ enum OpenCard {
     Away,
     /// The week's music.
     Music,
+    /// A quick question to Claude.
+    Question,
 }
 
 impl OpenCard {
-    /// Grows out of the pill and shrinks back into it (the picker slides up on its own).
+    /// Grows out of the pill and shrinks back into it (the picker and the question card, opened
+    /// by a shortcut, slide up on their own).
     fn grows_from_pill(self) -> bool {
-        !matches!(self, OpenCard::Picker)
+        !self.takes_keys()
+    }
+
+    /// Takes the keyboard: focused while open, and not closed by the mouse leaving.
+    fn takes_keys(self) -> bool {
+        matches!(self, OpenCard::Picker | OpenCard::Question)
     }
 }
 
@@ -749,6 +766,15 @@ pub struct App {
     wellbeing_box: WellbeingMailbox,
     usage_moment: Option<(String, u32, u64)>,
     app_icons: HashMap<PathBuf, Option<Crest>>,
+    /// The question card: the field, Claude's answer (as its worker last left it), the caret's
+    /// blink, the answer's scroll (`None`: its end), when "Kopyala" was last clicked (ms).
+    question: Field,
+    question_worker: AskWorker,
+    question_box: AskMailbox,
+    question_seen: AskBox,
+    question_caret: bool,
+    question_scroll: Option<f32>,
+    question_copied_ms: u64,
     /// Explorer's copy dialog as its worker last read it, since when it shows (ms), and the last
     /// one's end (a moment).
     transfer: Option<TransferNow>,
@@ -816,6 +842,9 @@ impl App {
         }
         if let Err(e) = register_hotkey(main.hwnd, settings::current().hotkey_picker) {
             log(&format!("picker shortcut is taken by another app: {e:?}"));
+        }
+        if let Err(e) = register_question_hotkey(main.hwnd, settings::current().hotkey_question) {
+            log(&format!("question shortcut is taken by another app: {e:?}"));
         }
         // Transparency effects on/off (also flips with Energy Saver); raised on a worker thread.
         let ui_settings = UISettings::new().ok();
@@ -973,6 +1002,13 @@ impl App {
             wellbeing_box,
             usage_moment: None,
             app_icons: HashMap::new(),
+            question: Field::default(),
+            question_worker: AskWorker::default(),
+            question_box: AskMailbox::default(),
+            question_seen: AskBox::default(),
+            question_caret: false,
+            question_scroll: None,
+            question_copied_ms: 0,
             transfer: None,
             transfer_since: 0,
             transfer_done: None,
@@ -1073,9 +1109,10 @@ impl App {
             let _ = KillTimer(Some(self.ui.card_window.timer_owner()), TIMER_OUTSIDE);
             let _ = KillTimer(Some(self.ui.card_window.timer_owner()), TIMER_RAISE);
         }
-        if self.open == Some(OpenCard::Picker) {
+        if self.open.is_some_and(OpenCard::takes_keys) {
             self.ui.card_window.set_focusable(false);
         }
+        self.leave_question();
         self.leave_output_page();
         self.ui.card_window.hide();
         self.ui.pill.set_opacity(1.0)?;
@@ -1710,6 +1747,7 @@ impl App {
             OpenCard::Wellbeing => Some(CardContent::Wellbeing(Box::new(self.wellbeing_card()))),
             OpenCard::Away => self.away.as_ref().map(|r| CardContent::Away(Box::new(self.away_card_shown(r)))),
             OpenCard::Music => Some(CardContent::Music(Box::new(self.music_card()))),
+            OpenCard::Question => Some(CardContent::Question(Box::new(self.question_card()))),
             OpenCard::Activity(ActivityKind::Timer) => self.timer.as_ref().map(|slot| {
                 let state = slot.t.state(now);
                 let done = state == RunState::Done;
@@ -2555,6 +2593,11 @@ impl App {
                 sooner(TRANSFER_DONE_MS - age + 5);
             }
         }
+        // "Kopyalandı" goes back to "Kopyala".
+        let copied = now.saturating_sub(self.question_copied_ms);
+        if self.open == Some(OpenCard::Question) && copied < SHELF_SAY_MS {
+            sooner(SHELF_SAY_MS - copied + 5);
+        }
         // A shelf chip's result gives its label back (one still working waits for its answer).
         if let Some((_, _, until)) = &self.shelf_status {
             if *until != u64::MAX {
@@ -2706,6 +2749,13 @@ impl App {
                 self.open = Some(OpenCard::Away);
             }
             CardAction::WellbeingMusic => self.open = Some(OpenCard::Music),
+            CardAction::QuestionCopy => {
+                let answer = plain(&self.question_seen.answer);
+                match crate::platform::clipboard::set_text(self.main.hwnd, &answer) {
+                    Ok(()) => self.question_copied_ms = now,
+                    Err(e) => log(&format!("question: clipboard ({e})")),
+                }
+            }
             CardAction::BriefPlay => {
                 if let Some(id) = self.brief_media().map(|m| m.id) {
                     self.media_worker.send(id, MediaCommand::PlayPause);
@@ -3150,6 +3200,11 @@ impl App {
                 log(&format!("picker shortcut is taken by another app: {e:?}"));
             }
         }
+        if new.hotkey_question != old.hotkey_question {
+            if let Err(e) = register_question_hotkey(self.main.hwnd, new.hotkey_question) {
+                log(&format!("question shortcut is taken by another app: {e:?}"));
+            }
+        }
         if new.accent_from_wallpaper && !old.accent_from_wallpaper {
             self.check_wallpaper();
         }
@@ -3315,6 +3370,99 @@ impl App {
             self.refresh()?;
         }
         Ok(())
+    }
+
+    /// The question card: the field, then Claude's answer as plain text, or what went wrong.
+    fn question_card(&self) -> QuestionCard {
+        let b = &self.question_seen;
+        let (show, answer) = match b.state {
+            AskState::Idle => (QuestionShow::Idle, String::new()),
+            AskState::Thinking => (QuestionShow::Thinking, String::new()),
+            AskState::Writing | AskState::Done => (QuestionShow::Answer, plain(&b.answer)),
+            AskState::NoClaude => (QuestionShow::Problem, tr("Claude Code bu bilgisayarda bulunamadı.").to_string()),
+            AskState::NotSignedIn => (QuestionShow::Problem, tr("Claude Code'a giriş yapılmamış: terminalde claude yazıp /login ile bir kez gir.").to_string()),
+            AskState::Failed => (QuestionShow::Problem, tr("Claude yanıt veremedi.").to_string()),
+            AskState::TimedOut => (QuestionShow::Problem, tr("Yanıt gelmedi.").to_string()),
+        };
+        let lines = match show {
+            QuestionShow::Idle => 0,
+            QuestionShow::Thinking => 1,
+            _ => lines_estimate(&answer, ANSWER_LINE_CHARS),
+        };
+        let whole = b.state == AskState::Done && !answer.trim().is_empty();
+        let copied = now_ms().saturating_sub(self.question_copied_ms) < SHELF_SAY_MS;
+        QuestionCard {
+            question: self.question.text.clone(),
+            caret: self.question_caret,
+            show,
+            answer,
+            lines,
+            scroll: self.question_scroll,
+            copy: whole.then(|| if copied { tr("Kopyalandı") } else { tr("Kopyala") }.to_string()),
+        }
+    }
+
+    /// The question card opens (from the shortcut, the tray or Ctrl and a click on the pill), in
+    /// place of a card that's out; open, it closes.
+    fn open_question(&mut self) -> Result<()> {
+        match (self.open, self.card_state) {
+            (Some(OpenCard::Question), CardState::Open | CardState::Opening) => self.close_card(),
+            (Some(_), CardState::Open | CardState::Opening) => {
+                self.hide_card_now()?;
+                self.open_card(OpenCard::Question, false)
+            }
+            _ => self.open_card(OpenCard::Question, false),
+        }
+    }
+
+    /// A character typed into the question card.
+    fn question_key(&mut self, unit: u16) -> Result<()> {
+        match self.question.key(unit) {
+            FieldEdit::Changed => {}
+            FieldEdit::Submit => {
+                let text = self.question.text.trim().to_string();
+                if text.is_empty() {
+                    return Ok(());
+                }
+                log(&format!("question: asked ({} characters)", text.chars().count()));
+                self.question_scroll = None;
+                self.question_worker.ask(text, self.question_box.clone(), crate::platform::windows::post_question);
+            }
+            FieldEdit::Close => return self.close_card(),
+            FieldEdit::Paste => {
+                if let Some(text) = crate::platform::clipboard::get_text(self.main.hwnd) {
+                    self.question.insert(&text);
+                }
+            }
+            FieldEdit::None => return Ok(()),
+        }
+        // Typing holds the caret on; its blink starts again.
+        self.question_caret = true;
+        unsafe { SetTimer(Some(self.main.hwnd), TIMER_CARET, CARET_BLINK_MS, None) };
+        self.refresh()
+    }
+
+    /// The question card closing: an answer still coming is stopped (a whole one stays for the
+    /// next time), the caret stops.
+    fn leave_question(&mut self) {
+        if self.open != Some(OpenCard::Question) {
+            return;
+        }
+        unsafe {
+            let _ = KillTimer(Some(self.main.hwnd), TIMER_CARET);
+        }
+        if matches!(self.question_seen.state, AskState::Thinking | AskState::Writing) {
+            self.question_worker.stop();
+            self.question_seen = AskBox::default();
+        }
+    }
+
+    /// Claude's answer moved on.
+    fn take_question(&mut self) -> Result<()> {
+        if let Ok(b) = self.question_box.lock() {
+            self.question_seen = b.clone();
+        }
+        self.refresh()
     }
 
     /// The copy dialog's worker: a dialog came, moved on or went; one that went nearly done is a
@@ -3743,10 +3891,14 @@ impl App {
         self.open = Some(which);
         self.card_state = CardState::Opening;
         unsafe { SetTimer(Some(self.ui.card_window.timer_owner()), TIMER_OUTSIDE, OUTSIDE_POLL_MS, None) };
-        if which == OpenCard::Picker {
+        if which.takes_keys() {
             self.ui.card_window.set_focusable(true);
         } else if by_pointer {
             self.arm_leave();
+        }
+        if which == OpenCard::Question {
+            self.question_caret = true;
+            unsafe { SetTimer(Some(self.main.hwnd), TIMER_CARET, CARET_BLINK_MS, None) };
         }
         self.schedule_tick(now_ms());
         Ok(())
@@ -3761,10 +3913,11 @@ impl App {
         unsafe {
             let _ = KillTimer(Some(self.ui.card_window.timer_owner()), TIMER_OUTSIDE);
         }
-        if self.open == Some(OpenCard::Picker) {
+        if self.open.is_some_and(OpenCard::takes_keys) {
             self.ui.card_window.set_focusable(false);
         }
         self.card_hover = false;
+        self.leave_question();
         self.leave_output_page();
         self.ui.card_window.hide_hit();
         // Into the pill as it is now (after a resize the shape's start is the previous card).
@@ -3830,6 +3983,7 @@ impl App {
             MENU_BRIEF => self.open_card(OpenCard::Brief, false),
             MENU_WELLBEING => self.open_card(OpenCard::Wellbeing, false),
             MENU_MUSIC => self.open_card(OpenCard::Music, false),
+            MENU_QUESTION => self.open_question(),
             MENU_TIMER => {
                 self.picker.stopwatch_tab = false;
                 self.open_card(OpenCard::Picker, false)
@@ -3923,6 +4077,8 @@ impl App {
             UiEvent::Lyrics => self.take_lyrics(),
             // The release after dragging the pill out, if OLE left it in the queue.
             UiEvent::Pill(PillEvent::Click { .. }) if now_ms().saturating_sub(self.pill_drag_ms) < 400 => Ok(()),
+            // Ctrl and a click: a question to Claude, whatever the pill shows.
+            UiEvent::Pill(PillEvent::Click { .. }) if unsafe { GetAsyncKeyState(VK_CONTROL.0 as i32) } as u16 & 0x8000 != 0 => self.open_question(),
             // A screenshot's pill opens the shelf it went onto.
             UiEvent::Pill(PillEvent::Click { .. })
                 if self.front_kind() == Some(ActivityKind::Capture)
@@ -4137,6 +4293,19 @@ impl App {
             UiEvent::Api => self.take_api(),
             UiEvent::ShelfTool => self.take_tools(),
             UiEvent::Transfer => self.take_transfer(),
+            UiEvent::QuestionHotkey => self.open_question(),
+            UiEvent::Char(unit) if self.open == Some(OpenCard::Question) => self.question_key(unit),
+            UiEvent::Question => self.take_question(),
+            UiEvent::Timer(TIMER_CARET) => {
+                if self.open == Some(OpenCard::Question) && self.card_state != CardState::Closing {
+                    self.question_caret = !self.question_caret;
+                    return self.refresh();
+                }
+                unsafe {
+                    let _ = KillTimer(Some(self.main.hwnd), TIMER_CARET);
+                }
+                Ok(())
+            }
             UiEvent::EffectsChanged => self.ui.morph.set_blur(effects_enabled()),
             UiEvent::Timer(TIMER_OUTSIDE) if !self.card_pinned && self.clicked_outside() => self.close_card(),
             UiEvent::Pill(PillEvent::Hover(over)) | UiEvent::Card(CardEvent::Hover(over)) => {
@@ -4163,7 +4332,7 @@ impl App {
                 }
                 if over {
                     self.disarm_leave();
-                } else if self.open != Some(OpenCard::Picker) {
+                } else if !self.open.is_some_and(OpenCard::takes_keys) {
                     self.arm_leave();
                 }
                 Ok(())
@@ -4239,6 +4408,13 @@ impl App {
                     Some(action) => self.act(action),
                     None => Ok(()),
                 }
+            }
+            // The answer scrolls; back at its end, it follows the words again.
+            UiEvent::Card(CardEvent::Wheel { delta, .. }) if self.open == Some(OpenCard::Question) => {
+                let overflow = self.ui.card.answer_overflow();
+                let at = self.question_scroll.unwrap_or(overflow) - delta as f32 / 120.0 * self.ui.card_scale.px(3.0 * crate::render::card::QUESTION_LINE);
+                self.question_scroll = (at < overflow - 0.5).then_some(at.max(0.0));
+                self.refresh()
             }
             UiEvent::Card(CardEvent::Wheel { x, y, delta }) => {
                 if let (Some(OpenCard::Picker), Some(CardAction::PickerField(field))) = (self.open, self.ui.card.hit_test(x, y)) {

@@ -1,12 +1,34 @@
-//! Text onto the clipboard (the shelf's "Metni kopyala").
+//! Text onto the clipboard (the shelf's "Metni kopyala", the question card's answer) and off it.
 
 use windows::core::Result;
-use windows::Win32::Foundation::{GlobalFree, HANDLE, HWND};
-use windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData};
-use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL, HWND};
+use windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, GetClipboardData, OpenClipboard, SetClipboardData};
+use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock, GMEM_MOVEABLE};
 
 /// CF_UNICODETEXT.
 const UNICODE_TEXT: u32 = 13;
+
+/// The clipboard's Unicode text, if it holds some (the question card's Ctrl+V).
+pub fn get_text(owner: HWND) -> Option<String> {
+    unsafe {
+        OpenClipboard(Some(owner)).ok()?;
+        let read = || -> Option<String> {
+            let memory = HGLOBAL(GetClipboardData(UNICODE_TEXT).ok()?.0);
+            let units = GlobalSize(memory) / 2;
+            let at = GlobalLock(memory) as *const u16;
+            if at.is_null() {
+                return None;
+            }
+            let all = std::slice::from_raw_parts(at, units);
+            let text = String::from_utf16_lossy(&all[..all.iter().position(|u| *u == 0).unwrap_or(units)]);
+            let _ = GlobalUnlock(memory);
+            Some(text)
+        };
+        let text = read();
+        let _ = CloseClipboard();
+        text
+    }
+}
 
 /// Puts `text` on the clipboard as Unicode text, owned by `owner`.
 pub fn set_text(owner: HWND, text: &str) -> Result<()> {

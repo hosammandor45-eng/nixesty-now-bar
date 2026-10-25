@@ -14,7 +14,7 @@ use nowbar::platform::audio::{list_outputs, picker_order};
 use nowbar::platform::fullscreen::visible_apps;
 use nowbar::render::card::output_subline;
 use nowbar::settings::{
-    self, AnimationSpeed, CardSize, FollowedTeam, Hotkey, Marquee, PillButtons, PillSize, Settings, Theme as Look, TrayClick, WeatherCity,
+    self, AnimationSpeed, CardSize, FollowedTeam, Hotkey, Marquee, PillButtons, PillSize, QuestionHotkey, Settings, Theme as Look, TrayClick, WeatherCity,
 };
 use nowbar::activities::buds::Paired;
 use nowbar::i18n::{self, Language, LanguagePick};
@@ -42,6 +42,7 @@ use nowbar_ui::*;
 
 const TITLE: PCWSTR = w!("Now Bar Ayarları");
 const HOTKEYS: [Hotkey; 5] = [Hotkey::WinAltN, Hotkey::WinAltT, Hotkey::CtrlAltN, Hotkey::WinShiftN, Hotkey::Off];
+const QUESTION_HOTKEYS: [QuestionHotkey; 3] = [QuestionHotkey::WinAltC, QuestionHotkey::WinShiftC, QuestionHotkey::Off];
 const KEEP_MIN: [u32; 5] = [1, 5, 10, 30, 0];
 const ADD_MIN: [u32; 3] = [1, 5, 10];
 const BUDS_FRONT_S: [u32; 4] = [0, 5, 15, 30];
@@ -438,6 +439,7 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_marquee_speed(s.marquee_speed_dip_s as f32);
     st.set_autostart(s.autostart);
     st.set_hotkey(index_of(&HOTKEYS, &s.hotkey_picker, 0));
+    st.set_question_hotkey(index_of(&QUESTION_HOTKEYS, &s.hotkey_question, 0));
     st.set_language(index_of(&LANGUAGES, &s.language, 0));
     st.set_tray_click(if s.tray_left_click == TrayClick::Settings { 1 } else { 0 });
     st.set_close_on_leave(s.card_close_on_leave);
@@ -553,6 +555,7 @@ fn read(ui: &SettingsWindow, base: &Settings) -> Settings {
         marquee_speed_dip_s: st.get_marquee_speed().round() as u8,
         autostart: st.get_autostart(),
         hotkey_picker: pick(&HOTKEYS, st.get_hotkey(), Hotkey::WinAltN),
+        hotkey_question: pick(&QUESTION_HOTKEYS, st.get_question_hotkey(), QuestionHotkey::WinAltC),
         language: pick(&LANGUAGES, st.get_language(), LanguagePick::Auto),
         tray_left_click: if st.get_tray_click() == 1 { TrayClick::Settings } else { TrayClick::Picker },
         card_close_on_leave: st.get_close_on_leave(),

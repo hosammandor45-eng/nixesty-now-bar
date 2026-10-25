@@ -99,6 +99,8 @@ export global Store {
     in-out property <bool> autostart: true;
     /// 0 Win+Alt+N, 1 Win+Alt+T, 2 Ctrl+Alt+N, 3 Win+Shift+N, 4 off.
     in-out property <int> hotkey: 0;
+    /// The question card's: Win+Alt+C, Win+Shift+C, off.
+    in-out property <int> question-hotkey: 0;
     /// 0 Otomatik (Windows'unki), 1 Türkçe, 2 English.
     in-out property <int> language: 0;
     callback language-picked(int);

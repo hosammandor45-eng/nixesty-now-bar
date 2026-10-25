@@ -20,6 +20,7 @@ pub const MENU_UPDATE: u32 = 8;
 pub const MENU_BRIEF: u32 = 9;
 pub const MENU_WELLBEING: u32 = 10;
 pub const MENU_MUSIC: u32 = 11;
+pub const MENU_QUESTION: u32 = 12;
 
 const TRAY_ID: u32 = 1;
 
@@ -111,6 +112,7 @@ pub fn show_menu(owner: HWND, autostart: bool, match_items: bool, update: Option
         let _ = AppendMenuW(menu, MF_STRING, MENU_BRIEF as usize, w!("Now Brief"));
         let _ = AppendMenuW(menu, MF_STRING, MENU_WELLBEING as usize, &HSTRING::from(tr("Dijital Denge")));
         let _ = AppendMenuW(menu, MF_STRING, MENU_MUSIC as usize, &HSTRING::from(tr("Haftanın müziği")));
+        let _ = AppendMenuW(menu, MF_STRING, MENU_QUESTION as usize, &HSTRING::from(tr("Claude'a sor")));
         let _ = AppendMenuW(menu, MF_STRING, MENU_TIMER as usize, &HSTRING::from(tr("Zamanlayıcı başlat")));
         let _ = AppendMenuW(menu, MF_STRING, MENU_STOPWATCH as usize, &HSTRING::from(tr("Kronometre başlat")));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, None);

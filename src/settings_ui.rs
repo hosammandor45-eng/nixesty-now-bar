@@ -43,6 +43,7 @@ pub const INDEX: &[Entry] = &[
     e(1, "language", n_("Dil"), n_("Arayüzün dili"), n_("Otomatik: Windows'unki; Türkçe ya da İngilizce"), "dil language english ingilizce türkçe turkish arayüz"),
     e(1, "autostart", n_("Başlangıç"), n_("Windows ile başlat"), n_("Oturum açınca Now Bar kendiliğinden çalışır"), "başlangıç açılış otomatik"),
     e(1, "hotkey", n_("Kısayol ve tepsi"), n_("Seçici kısayolu"), n_("Zamanlayıcı seçicisini açar"), "klavye tuş hotkey win alt"),
+    e(1, "question-hotkey", n_("Kısayol ve tepsi"), n_("Claude'a sor"), n_("Kartta bir yazı kutusu açar, cevap Claude Code'dan akar; pile Ctrl ile tıklamak da açar"), "claude soru sor yapay zeka ai kısayol spotlight"),
     e(1, "tray-click", n_("Kısayol ve tepsi"), n_("Tepsi simgesine sol tık"), n_("Zamanlayıcı seçicisi ya da ayarlar"), "tepsi simge tray"),
     e(1, "close-on-leave", n_("Kart ve etkileşim"), n_("Fare ayrılınca kartı kapat"), n_("Fare karttan uzaklaşınca kart kapanır"), "kapat fare"),
     e(1, "leave-ms", n_("Kart ve etkileşim"), n_("Kapanma gecikmesi"), n_("Fare ayrıldıktan sonra kartın kapanma süresi"), "gecikme süre kapanma"),

@@ -20,6 +20,15 @@ pub enum Hotkey {
     Off,
 }
 
+/// The question card's shortcut.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QuestionHotkey {
+    WinAltC,
+    WinShiftC,
+    Off,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TrayClick {
@@ -129,6 +138,8 @@ pub struct Settings {
     /// The interface's language (`Auto`: Windows' own, Turkish or English).
     pub language: crate::i18n::LanguagePick,
     pub hotkey_picker: Hotkey,
+    /// Opens the question card (a quick question to Claude Code).
+    pub hotkey_question: QuestionHotkey,
     pub tray_left_click: TrayClick,
     pub card_close_on_leave: bool,
     pub card_leave_close_ms: u32,
@@ -286,6 +297,7 @@ impl Default for Settings {
             autostart: true,
             language: crate::i18n::LanguagePick::Auto,
             hotkey_picker: Hotkey::WinAltN,
+            hotkey_question: QuestionHotkey::WinAltC,
             tray_left_click: TrayClick::Picker,
             card_close_on_leave: true,
             card_leave_close_ms: 600,
@@ -741,6 +753,13 @@ mod tests {
         assert!(old.wellbeing_on && old.wellbeing_in_brief && old.wellbeing_limit_moments && old.wellbeing_limits.is_empty());
         let s = parse(r#"{"wellbeing_limits": [{"exe": "Discord.exe", "minutes": 120}, {"exe": "x.exe", "minutes": 0}, {"exe": "y.exe", "minutes": 99999}]}"#);
         assert_eq!(s.wellbeing_limits, vec![AppLimit { exe: "Discord.exe".into(), minutes: 120 }, AppLimit { exe: "y.exe".into(), minutes: 1440 }]);
+    }
+
+    #[test]
+    fn the_question_card_has_win_alt_c_by_default() {
+        let old: Settings = serde_json::from_str(r#"{"enabled": true}"#).unwrap();
+        assert_eq!(old.hotkey_question, QuestionHotkey::WinAltC);
+        assert_eq!(parse(r#"{"hotkey_question": "off"}"#).hotkey_question, QuestionHotkey::Off);
     }
 
     #[test]

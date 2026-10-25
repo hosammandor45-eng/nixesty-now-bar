@@ -5,7 +5,7 @@ use nowbar::activities::buds::{BudsSnapshot, NoiseControl};
 use nowbar::activities::media::{Caps, MediaSnapshot, Timeline};
 use nowbar::platform::audio::{list_outputs, output_volume, picker_order, OutputBus, OutputKind};
 use nowbar::activities::live::{AppIcon, LiveState};
-use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, MusicCard, MusicRow, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
+use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, MusicCard, MusicRow, QuestionCard, QuestionShow, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
 use nowbar::activities::games::Store;
 use nowbar::activities::shelf::{file_kind, op_label, ops, ShelfItem, ShelfOp};
 use nowbar::activities::claude::StepKind;
@@ -125,6 +125,18 @@ fn game_card(store: Store, title: &str, cover: &str, status: &str, detail: &str,
     let cover = nowbar::render::crest::load_cover(std::path::Path::new(cover), w, h);
     let paused = status.starts_with("Duraklatıldı");
     CardContent::Game(Box::new(GameCard { store, title: title.into(), cover, status: status.into(), detail: detail.into(), progress, paused }))
+}
+
+/// The question card as the app fills it (made-up words).
+fn question(show: QuestionShow, asked: &str, answer: &str) -> CardContent {
+    let answer = nowbar::activities::question::plain(answer);
+    let lines = match show {
+        QuestionShow::Idle => 0,
+        QuestionShow::Thinking => 1,
+        _ => nowbar::activities::question::lines_estimate(&answer, 46),
+    };
+    let copy = (show == QuestionShow::Answer).then(|| "Kopyala".to_string());
+    CardContent::Question(Box::new(QuestionCard { question: asked.into(), caret: true, show, answer, lines, scroll: None, copy }))
 }
 
 /// Back from a lock: one row of each kind (made up).
@@ -311,6 +323,15 @@ fn main() -> Result<()> {
             accent: (0x1D, 0xB9, 0x54),
         })),
         CardContent::Away(Box::new(away_card())),
+        question(QuestionShow::Idle, "", ""),
+        question(QuestionShow::Thinking, "Rust'ta bir Vec'i nasıl ters çeviririm?", ""),
+        question(
+            QuestionShow::Answer,
+            "Rust'ta bir Vec'i nasıl ters çeviririm?",
+            "**Yerinde** ters çevirmek için `v.reverse()` kullan.\n\nYeni bir vektör istersen:\n- `v.iter().rev().cloned().collect::<Vec<_>>()`\n- ya da `v.into_iter().rev().collect()`",
+        ),
+        question(QuestionShow::Answer, &"Çok uzun bir soru, kutuya sığmayınca sonu görünür ve imleç onun ardında durur ".repeat(2), &"Uzun bir yanıt kaydırılır; kart en çok on dört satır büyür, gerisi tekerlekle okunur. ".repeat(12)),
+        question(QuestionShow::Problem, "merhaba", "Claude Code'a giriş yapılmamış: terminalde claude yazıp /login ile bir kez gir."),
         game_card(Store::Steam, "THE FINALS", r"C:\Program Files (x86)\Steam\appcache\librarycache\2073850\6d9cfdeaea9f822d8f4af42d8f0dbd083e81f64e\library_capsule.jpg", "İndiriliyor · %48", "1,2 GB / 2,5 GB · 18 MB/sn · ~2 dk kaldı", Some(0.48), &s),
         game_card(Store::Epic, "Fortnite", &epic("39cbca1529a42219a35ddece5acaf84f"), "Güncelleniyor · 4:12", "Başladı 22:41", None, &s),
         game_card(Store::Epic, "Rocket League", "", "Oynuyor · 34 dk", "Başladı 21:10", None, &s),

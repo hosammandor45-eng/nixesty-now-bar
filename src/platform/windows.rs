@@ -56,6 +56,12 @@ pub enum UiEvent {
     MorphDone { opened: bool },
     /// A key pressed while the picker has focus (virtual-key code).
     Key(u16),
+    /// A character typed while the question card has focus (a UTF-16 unit).
+    Char(u16),
+    /// The question card's shortcut.
+    QuestionHotkey,
+    /// Claude's answer moved on (its mailbox has it).
+    Question,
     /// The tray icon was clicked.
     Tray { right: bool },
     /// Win+Alt+N.
@@ -148,6 +154,7 @@ pub const WM_WELLBEING: u32 = WM_APP + 19;
 pub const WM_API: u32 = WM_APP + 20;
 pub const WM_SHELF_TOOL: u32 = WM_APP + 21;
 pub const WM_TRANSFER: u32 = WM_APP + 22;
+pub const WM_QUESTION: u32 = WM_APP + 23;
 
 static MAIN_HWND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
 static TASKBAR_CREATED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -245,6 +252,10 @@ pub fn post_shelf_tool() {
 
 pub fn post_transfer() {
     post_main(WM_TRANSFER);
+}
+
+pub fn post_question() {
+    post_main(WM_QUESTION);
 }
 
 thread_local! {
@@ -417,6 +428,11 @@ extern "system" fn card_input_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM)
             push_event(UiEvent::Key(wp.0 as u16));
             LRESULT(0)
         }
+        // Typing in the question card (Backspace, Enter, Esc and Ctrl+V come as characters too).
+        WM_CHAR => {
+            push_event(UiEvent::Char(wp.0 as u16));
+            LRESULT(0)
+        }
         _ => unsafe { DefWindowProcW(hwnd, msg, wp, lp) },
     }
 }
@@ -436,7 +452,7 @@ extern "system" fn main_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LR
             LRESULT(0)
         }
         WM_HOTKEY => {
-            push_event(UiEvent::Hotkey);
+            push_event(if wp.0 as i32 == super::hotkey::QUESTION_ID { UiEvent::QuestionHotkey } else { UiEvent::Hotkey });
             LRESULT(0)
         }
         WM_WTSSESSION_CHANGE => {
@@ -471,9 +487,10 @@ extern "system" fn main_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LR
             None => LRESULT(0),
         },
         WM_EFFECTS | WM_MEDIA | WM_OUTPUT | WM_BUDS | WM_VOLUME | WM_SETTINGS_FILE | WM_MATCHES | WM_LYRICS | WM_PRIVACY | WM_HEADSETS | WM_WEATHER | WM_SHELF | WM_CAPTURE | WM_UPDATE
-        | WM_TASKBAR_ITEMS | WM_WALLPAPER | WM_GAMES | WM_WELLBEING | WM_API | WM_SHELF_TOOL | WM_TRANSFER => {
+        | WM_TASKBAR_ITEMS | WM_WALLPAPER | WM_GAMES | WM_WELLBEING | WM_API | WM_SHELF_TOOL | WM_TRANSFER | WM_QUESTION => {
             push_event(match msg {
                 WM_API => UiEvent::Api,
+                WM_QUESTION => UiEvent::Question,
                 WM_SHELF_TOOL => UiEvent::ShelfTool,
                 WM_TRANSFER => UiEvent::Transfer,
                 WM_WELLBEING => UiEvent::Wellbeing,
@@ -776,7 +793,7 @@ impl CardWindow {
         self.input
     }
 
-    /// The picker takes keyboard focus (Enter starts, Esc closes); every other card never activates.
+    /// The picker and the question card take keyboard focus; every other card never activates.
     pub fn set_focusable(&self, focusable: bool) {
         unsafe {
             let ex = GetWindowLongPtrW(self.input, GWL_EXSTYLE) as u32;

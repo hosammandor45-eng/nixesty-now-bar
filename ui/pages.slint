@@ -395,7 +395,7 @@ export component GeneralBody inherits VerticalLayout {
     alignment: start;
     H4 {
         title: @tr("Kısayollar");
-        count: @tr("1 kısayol");
+        count: @tr("2 kısayol");
     }
     LRow {
         title: @tr("Zamanlayıcı seçicisi");
@@ -410,6 +410,20 @@ export component GeneralBody inherits VerticalLayout {
             Keycap { key: Keys.of(Store.hotkey, 2); size: 26px; }
         }
         if Store.hotkey == 4: Tag { text: @tr("Kapalı"); }
+    }
+    LRow {
+        title: @tr("Claude'a sor");
+        sub: @tr("soru kartını açar");
+        lead: 1;
+        glyph: "\u{E8BD}";
+        // Win+Alt+C, Win+Shift+C
+        if Store.question-hotkey < 2: HorizontalLayout {
+            spacing: 4px;
+            Keycap { key: "Win"; size: 26px; }
+            Keycap { key: Store.question-hotkey == 1 ? "Shift" : "Alt"; size: 26px; }
+            Keycap { key: "C"; size: 26px; }
+        }
+        if Store.question-hotkey == 2: Tag { text: @tr("Kapalı"); }
     }
     LRow {
         title: @tr("Tepsi simgesi");
@@ -509,6 +523,16 @@ export component GeneralInspector inherits VerticalLayout {
             Select {
                 options: ["Win + Alt + N", "Win + Alt + T", "Ctrl + Alt + N", "Win + Shift + N", @tr("Kapalı")];
                 selected <=> Store.hotkey;
+                box-width: 142px;
+                picked => { Ui.changed(); }
+            }
+        }
+        IRow {
+            label: @tr("Claude'a sor");
+            note: @tr("ya da pile Ctrl ile tıkla");
+            Select {
+                options: ["Win + Alt + C", "Win + Shift + C", @tr("Kapalı")];
+                selected <=> Store.question-hotkey;
                 box-width: 142px;
                 picked => { Ui.changed(); }
             }

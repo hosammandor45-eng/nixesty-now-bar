@@ -2,6 +2,8 @@
 
 pub mod api;
 pub mod api_desk;
+pub mod question;
+pub mod question_worker;
 pub mod away;
 pub mod basketball;
 pub mod basketball_worker;

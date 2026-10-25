@@ -10,7 +10,7 @@ use super::icons::{glyph, Icon};
 use super::layout::Scale;
 use super::color::media_gradient;
 use super::pill::{
-    alert_style, lighten, paint_app_icon, paint_live_mark, store_accent, timer_accent, BUDS_ACCENT, CLAUDE_ACCENT, LOW_ACCENT, RAIN_ACCENT, RAIN_ICON, SNOW_ACCENT, SNOW_ICON,
+    alert_style, lighten, paint_app_icon, paint_live_mark, store_accent, timer_accent, BUDS_ACCENT, CLAUDE_ACCENT, CLAUDE_ICON, LOW_ACCENT, RAIN_ACCENT, RAIN_ICON, SNOW_ACCENT, SNOW_ICON,
     WELLBEING_ACCENT, WELLBEING_GLYPH,
 };
 use crate::activities::away::AwayKind;
@@ -270,6 +270,7 @@ pub enum CardContent {
     Wellbeing(Box<WellbeingCard>),
     Away(Box<AwayCard>),
     Music(Box<MusicCard>),
+    Question(Box<QuestionCard>),
 }
 
 /// "Sen yokken": what happened while the PC was locked.
@@ -342,6 +343,49 @@ pub struct MusicRow {
     /// "12 kez"
     pub plays: String,
     pub accent: (u8, u8, u8),
+}
+
+/// A quick question to Claude: the field as typed, then the answer as it's written.
+#[derive(Clone, Debug, PartialEq)]
+pub struct QuestionCard {
+    pub question: String,
+    /// The caret's blink: on or off now.
+    pub caret: bool,
+    pub show: QuestionShow,
+    /// The answer so far, or what went wrong.
+    pub answer: String,
+    /// The answer's area, in lines (from its estimate); the card grows with it.
+    pub lines: usize,
+    /// How far the answer is scrolled (px); `None` follows its end.
+    pub scroll: Option<f32>,
+    /// The copy chip's label once the answer is whole ("Kopyala", or "Kopyalandı" for a moment).
+    pub copy: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QuestionShow {
+    /// Not asked yet: the field alone.
+    Idle,
+    Thinking,
+    Answer,
+    /// What went wrong, in the answer's place.
+    Problem,
+}
+
+// The question card's parts (DIP): the header, the field, a line of the answer, the most lines.
+const QUESTION_HEADER: f32 = 52.0;
+const QUESTION_FIELD: f32 = 40.0;
+pub const QUESTION_LINE: f32 = 19.0;
+pub const QUESTION_MAX_LINES: usize = 14;
+
+fn question_height_dip(c: &QuestionCard) -> f32 {
+    match c.show {
+        QuestionShow::Idle => QUESTION_HEADER + QUESTION_FIELD + 16.0,
+        _ => {
+            let footer = if c.copy.is_some() { 10.0 + 28.0 + 14.0 } else { 16.0 };
+            QUESTION_HEADER + QUESTION_FIELD + 12.0 + c.lines.clamp(1, QUESTION_MAX_LINES) as f32 * QUESTION_LINE + 8.0 + footer
+        }
+    }
 }
 
 /// Music's colour: the shelf's audio files' pink.
@@ -697,6 +741,8 @@ pub enum CardAction {
     BriefAway,
     /// Dijital Denge's music row: the week's music card.
     WellbeingMusic,
+    /// The question card's "Kopyala": the answer onto the clipboard.
+    QuestionCopy,
 }
 
 /// Card size in DIP.
@@ -731,6 +777,7 @@ pub fn card_size_dip(c: &CardContent) -> (f32, f32) {
         CardContent::Wellbeing(c) => (370.0, wellbeing_height_dip(c)),
         CardContent::Away(c) => (370.0, BRIEF_HEADER + BRIEF_GAP + away_panel_dip(c) + 12.0),
         CardContent::Music(c) => (370.0, music_height_dip(c)),
+        CardContent::Question(c) => (370.0, question_height_dip(c)),
     }
 }
 
@@ -779,7 +826,7 @@ const APP_LINE: f32 = 18.0;
 pub fn card_radius_dip(c: &CardContent) -> f32 {
     match c {
         CardContent::Timer(_) | CardContent::Stopwatch(_) | CardContent::Live(_) => card_size_dip(c).1 / 2.0,
-        CardContent::Claude(_) | CardContent::App(_) => 36.0,
+        CardContent::Claude(_) | CardContent::App(_) | CardContent::Question(_) => 36.0,
         CardContent::Picker(_)
         | CardContent::Buds(_)
         | CardContent::Weather(_)
@@ -824,7 +871,7 @@ pub fn card_accent(c: &CardContent) -> (u8, u8, u8) {
     match c {
         CardContent::Timer(_) | CardContent::Stopwatch(_) | CardContent::Picker(_) | CardContent::Shelf(_) | CardContent::Away(_) => timer_accent(),
         CardContent::Live(l) if l.claude => CLAUDE_ACCENT,
-        CardContent::Claude(_) => CLAUDE_ACCENT,
+        CardContent::Claude(_) | CardContent::Question(_) => CLAUDE_ACCENT,
         CardContent::App(a) => a.accent,
         CardContent::Live(_) => timer_accent(),
         CardContent::Media(card) => (card.m.accent[0], card.m.accent[1], card.m.accent[2]),
@@ -847,12 +894,13 @@ pub struct CardVisual {
     volume: Option<(D2D_RECT_F, f32, f32)>,
     /// Shelf tiles: where a drag-out can start.
     tiles: Vec<D2D_RECT_F>,
+    answer_overflow: f32,
     size_px: (i32, i32),
 }
 
 impl CardVisual {
     pub fn new(g: &Gfx) -> Result<Self> {
-        Ok(CardVisual { surface: new_surface(g, 1, 1)?, hits: Vec::new(), seek: None, volume: None, tiles: Vec::new(), size_px: (1, 1) })
+        Ok(CardVisual { surface: new_surface(g, 1, 1)?, hits: Vec::new(), seek: None, volume: None, tiles: Vec::new(), answer_overflow: 0.0, size_px: (1, 1) })
     }
 
     pub fn size_px(&self) -> (i32, i32) {
@@ -871,8 +919,14 @@ impl CardVisual {
         self.seek = painted.seek;
         self.volume = painted.volume;
         self.tiles = painted.tiles;
+        self.answer_overflow = painted.answer.unwrap_or(0.0);
         self.size_px = (w, h);
         Ok(())
+    }
+
+    /// How far the question card's answer runs past its area (px), as last painted.
+    pub fn answer_overflow(&self) -> f32 {
+        self.answer_overflow
     }
 
     /// Seek bar fraction (0–1) under (x, y), if the point is on the seek bar.
@@ -914,6 +968,8 @@ pub struct Painted {
     seek: Option<(D2D_RECT_F, f32, f32)>,
     volume: Option<(D2D_RECT_F, f32, f32)>,
     tiles: Vec<D2D_RECT_F>,
+    /// The question card's answer: how far past its area it runs (px).
+    answer: Option<f32>,
 }
 
 /// Paints `c` into a `w`×`h` px area; dev tools render cards to PNG with it.
@@ -943,6 +999,7 @@ pub fn paint_card(ink: &Ink, c: &CardContent, s: &Scale, w: f32, h: f32) -> Resu
         CardContent::Wellbeing(c) => p.wellbeing(c),
         CardContent::Away(c) => p.away(c),
         CardContent::Music(c) => p.music(c),
+        CardContent::Question(c) => p.question(c, &mut out.answer),
     }?;
     Ok(out)
 }
@@ -1953,6 +2010,83 @@ impl Painter<'_, '_> {
         Ok(())
     }
 
+    /// Claude's mark and "Claude'a sor"; the field with what's typed (its end when it runs long)
+    /// and the caret; then the answer, scrolled to its end while it's written (`answer`: how far
+    /// it runs past its area), and "Kopyala" once it's whole.
+    fn question(&mut self, c: &QuestionCard, answer: &mut Option<f32>) -> Result<()> {
+        let d = |v: f32| v * self.s.0;
+        let (r, g, b) = CLAUDE_ACCENT;
+        let mark = rect(d(20.0), d(14.0), d(28.0), d(28.0));
+        self.ink.rrect(mark, d(14.0), rgba(r, g, b, 1.0))?;
+        let inset = d(28.0) * 0.22;
+        self.ink.svg(CLAUDE_ICON, D2D_RECT_F { left: mark.left + inset, top: mark.top + inset, right: mark.right - inset, bottom: mark.bottom - inset }, white(1.0))?;
+        let title = TextStyle::new(Face::Text, Weight::SemiBold, d(15.0), white(1.0)).ellipsis();
+        self.ink.text(tr("Claude'a sor"), rect(d(58.0), d(14.0), self.w - d(58.0) - d(130.0), d(28.0)), &title)?;
+        if c.show == QuestionShow::Idle {
+            let hint = TextStyle::new(Face::Text, Weight::Regular, d(12.0), white(0.45)).trailing();
+            self.ink.text(tr("Enter ile sor"), rect(self.w - d(20.0) - d(130.0), d(14.0), d(130.0), d(28.0)), &hint)?;
+        }
+
+        let field = rect(d(12.0), d(QUESTION_HEADER), self.w - d(24.0), d(QUESTION_FIELD));
+        let fh = field.bottom - field.top;
+        self.ink.rrect(field, fh / 2.0, white(0.08))?;
+        let (left, right) = (field.left + d(16.0), field.right - d(16.0));
+        let typed = TextStyle::new(Face::Text, Weight::Regular, d(14.0), white(1.0));
+        // Empty, the caret stands just before the placeholder's first letter.
+        let mut caret_x = left - d(4.0);
+        if c.question.is_empty() {
+            self.ink.text(tr("Bir şey sor…"), D2D_RECT_F { left, right, ..field }, &TextStyle::new(Face::Text, Weight::Regular, d(14.0), white(0.45)))?;
+        } else {
+            // A long question shows its end, where the caret is.
+            let tw = self.ink.measure(&c.question, &typed)?;
+            let x = if tw > right - left { right - tw } else { left };
+            unsafe { self.ink.dc.PushAxisAlignedClip(&D2D_RECT_F { left, right: right + d(2.0), ..field }, windows::Win32::Graphics::Direct2D::D2D1_ANTIALIAS_MODE_ALIASED) };
+            let drawn = self.ink.text(&c.question, rect(x, field.top, tw + d(2.0), fh), &typed);
+            unsafe { self.ink.dc.PopAxisAlignedClip() };
+            drawn?;
+            caret_x = (x + tw).min(right);
+        }
+        if c.caret {
+            let caret_h = d(18.0).round();
+            self.ink.rrect(rect(caret_x + d(1.0), (field.top + (fh - caret_h) / 2.0).round(), d(2.0).round(), caret_h), d(1.0), rgba(r, g, b, 1.0))?;
+        }
+        if c.show == QuestionShow::Idle {
+            return Ok(());
+        }
+
+        let top = QUESTION_HEADER + QUESTION_FIELD + 12.0;
+        let area = rect(d(20.0), d(top), self.w - d(40.0), d(c.lines.clamp(1, QUESTION_MAX_LINES) as f32 * QUESTION_LINE + 8.0));
+        let (aw, ah) = (area.right - area.left, area.bottom - area.top);
+        let (text, alpha) = match c.show {
+            QuestionShow::Thinking => (tr("Düşünüyor…"), 0.6),
+            QuestionShow::Problem => (c.answer.as_str(), 0.7),
+            _ => (c.answer.as_str(), 0.92),
+        };
+        let words = TextStyle::new(Face::Text, Weight::Regular, d(13.5), white(alpha)).top().wrap();
+        let h = self.ink.text_height(text, aw, &words)?;
+        let overflow = (h - ah).max(0.0);
+        // Scrolled by whole lines, so the top line is never cut (the last shows all the same).
+        let line = self.ink.text_height("Ag", aw, &words)?.max(1.0);
+        let offset = ((c.scroll.unwrap_or(overflow).clamp(0.0, overflow) / line).ceil() * line).min((h - line).max(0.0));
+        *answer = Some(overflow);
+        unsafe { self.ink.dc.PushAxisAlignedClip(&area, windows::Win32::Graphics::Direct2D::D2D1_ANTIALIAS_MODE_ALIASED) };
+        let drawn = self.ink.text(text, rect(area.left, area.top - offset, aw, h + d(2.0)), &words);
+        unsafe { self.ink.dc.PopAxisAlignedClip() };
+        drawn?;
+
+        if let Some(label) = &c.copy {
+            let style = TextStyle::new(Face::Text, Weight::Medium, d(12.0), white(0.85));
+            let tw = self.ink.measure(label, &style)?;
+            let chip = rect(d(20.0), area.bottom + d(10.0), d(44.0) + tw.ceil(), d(28.0));
+            let ch = chip.bottom - chip.top;
+            self.ink.rrect(chip, ch / 2.0, white(0.09))?;
+            self.ink.text(&glyph(Icon::Copy).to_string(), D2D_RECT_F { left: chip.left + d(12.0), right: chip.left + d(26.0), ..chip }, &TextStyle::new(Face::Icons, Weight::Regular, d(13.0), white(0.85)).centered())?;
+            self.ink.text(label, D2D_RECT_F { left: chip.left + d(32.0), ..chip }, &style)?;
+            self.hits.push((chip, CardAction::QuestionCopy));
+        }
+        Ok(())
+    }
+
     /// The week's music: how long, with the top track's colour on the mark; the tracks played
     /// most (their place, their cover's colour, title and artist, plays); the artists listened to
     /// longest.
@@ -2447,6 +2581,19 @@ mod tests {
         let h = |b: BriefCard| card_size_dip(&CardContent::Brief(Box::new(b))).1;
         let back = BriefCard { away: Some(("Sen yokken · 4 şey".into(), "Claude bitti · now-bar".into())), ..brief(false, false, 0, false, false) };
         assert_eq!(h(back), 84.0 + 68.0);
+    }
+
+    #[test]
+    fn the_question_card_grows_with_its_answer() {
+        let card = |show, lines, copy: bool| {
+            CardContent::Question(Box::new(QuestionCard { question: "?".into(), caret: true, show, answer: String::new(), lines, scroll: None, copy: copy.then(|| "Kopyala".into()) }))
+        };
+        assert_eq!(card_size_dip(&card(QuestionShow::Idle, 0, false)), (370.0, 52.0 + 40.0 + 16.0), "the field alone");
+        assert_eq!(card_size_dip(&card(QuestionShow::Thinking, 1, false)).1, 52.0 + 40.0 + 12.0 + 19.0 + 8.0 + 16.0);
+        assert_eq!(card_size_dip(&card(QuestionShow::Answer, 3, true)).1, 52.0 + 40.0 + 12.0 + 3.0 * 19.0 + 8.0 + 52.0, "and the copy chip");
+        let tallest = card_size_dip(&card(QuestionShow::Answer, 99, true)).1;
+        assert_eq!(tallest, 52.0 + 40.0 + 12.0 + 14.0 * 19.0 + 8.0 + 52.0, "14 lines, then it scrolls");
+        assert!(tallest <= 570.0, "inside the card window");
     }
 
     #[test]
