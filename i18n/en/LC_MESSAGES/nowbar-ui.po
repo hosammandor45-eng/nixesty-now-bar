@@ -3101,3 +3101,55 @@ msgstr "Turn on app notifications"
 #: setup/ui/setup.slint
 msgid "İzin verdiğin uygulamalar ve gösterdikleri senin sorumluluğunda"
 msgstr "The apps you allow, and what they show, are your responsibility"
+
+#: src/app.rs
+msgid "Sen yokken"
+msgstr "While you were away"
+
+#: src/settings_ui.rs
+msgid "Kilidi açınca, kilitliyken olanlar pilde bir an ve bir listede: Claude, goller, yağmur, indirmeler"
+msgstr "On unlocking, what happened while it was locked: a moment in the pill and a list: Claude, goals, rain, downloads"
+
+#: src/activities/away.rs
+msgid "1 şey"
+msgstr "1 thing"
+
+#: src/activities/away.rs
+msgid "{} şey"
+msgstr "{} things"
+
+#: src/activities/away.rs
+msgid "Claude bitti · {}"
+msgstr "Claude finished · {}"
+
+#: src/activities/away.rs
+msgid "{} bitti"
+msgstr "{} finished"
+
+#: src/activities/away.rs
+msgid "Kar başladı"
+msgstr "Snow started"
+
+#: src/activities/away.rs
+msgid "Yağmur başladı"
+msgstr "Rain started"
+
+#: src/activities/away.rs
+msgid "{} indirmesi bitti"
+msgstr "{} finished downloading"
+
+#: src/activities/away.rs
+msgid "Zamanlayıcı bitti"
+msgstr "Timer finished"
+
+#: src/activities/away.rs
+msgid "Pil {} kaldı"
+msgstr "Battery at {}"
+
+#: src/render/card.rs
+msgid "+{} daha"
+msgstr "+{} more"
+
+#: ui/pages.slint
+msgid "Kilidi açınca, kilitliyken olanlar"
+msgstr "On unlocking, what happened while locked"

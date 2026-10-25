@@ -187,6 +187,8 @@ export global Store {
     in-out property <bool> weather-effects: true;
     in-out property <bool> brief-morning: true;
     in-out property <string> brief-name;
+    /// Back from a lock: what happened meanwhile.
+    in-out property <bool> away-summary: true;
     /// The Windows account's first name, the name box's placeholder.
     in property <string> windows-name;
     /// The weather's city; `name` "" for none.

@@ -9,7 +9,11 @@ use super::gfx::{new_surface, paint_surface, rect, rgba, white, Face, Gfx, Ink, 
 use super::icons::{glyph, Icon};
 use super::layout::Scale;
 use super::color::media_gradient;
-use super::pill::{alert_style, lighten, paint_app_icon, paint_live_mark, store_accent, timer_accent, BUDS_ACCENT, CLAUDE_ACCENT, WELLBEING_ACCENT, WELLBEING_GLYPH};
+use super::pill::{
+    alert_style, lighten, paint_app_icon, paint_live_mark, store_accent, timer_accent, BUDS_ACCENT, CLAUDE_ACCENT, LOW_ACCENT, RAIN_ACCENT, RAIN_ICON, SNOW_ACCENT, SNOW_ICON,
+    WELLBEING_ACCENT, WELLBEING_GLYPH,
+};
+use crate::activities::away::AwayKind;
 use crate::activities::live::AppIcon;
 use crate::activities::games::Store;
 use crate::activities::weather_alert::AlertKind;
@@ -264,6 +268,38 @@ pub enum CardContent {
     Brief(Box<BriefCard>),
     Game(Box<GameCard>),
     Wellbeing(Box<WellbeingCard>),
+    Away(Box<AwayCard>),
+}
+
+/// "Sen yokken": what happened while the PC was locked.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AwayCard {
+    /// "14:02 – 17:14 · 3 sa 12 dk"
+    pub span: String,
+    /// Newest first, at most `away::CARD_ROWS`.
+    pub rows: Vec<AwayRow>,
+    /// The older ones left out: "+3 daha".
+    pub more: usize,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AwayRow {
+    pub kind: AwayKind,
+    /// "Claude bitti · now-bar"
+    pub text: String,
+    /// "17:05"
+    pub time: String,
+    /// A match row's followed team's crest, at the row mark's pixels.
+    pub crest: Option<Crest>,
+}
+
+// The away card's parts (DIP): a row, the "+3 daha" line.
+const AWAY_ROW: f32 = 44.0;
+const AWAY_MORE: f32 = 28.0;
+
+/// The rows' panel: 8 above and below, each row, the "+N daha" line.
+fn away_panel_dip(c: &AwayCard) -> f32 {
+    16.0 + c.rows.len().max(1) as f32 * AWAY_ROW + if c.more > 0 { AWAY_MORE } else { 0.0 }
 }
 
 /// Dijital Denge: today's total, the week, the apps used longest.
@@ -442,6 +478,8 @@ pub struct BriefCard {
     pub music: Option<BriefMusic>,
     /// Dijital Denge's row: ("Ekran süresi · 3 sa 40 dk", "Bugün · VS Code 1 sa 50 dk").
     pub screen: Option<(String, String)>,
+    /// Just back from a lock: ("Sen yokken · 4 şey", "Claude bitti · now-bar").
+    pub away: Option<(String, String)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -581,6 +619,8 @@ pub enum CardAction {
     BriefPlay,
     /// The brief's screen time row: the Dijital Denge card.
     BriefScreen,
+    /// The brief's "Sen yokken" row: the away card.
+    BriefAway,
 }
 
 /// Card size in DIP.
@@ -613,6 +653,7 @@ pub fn card_size_dip(c: &CardContent) -> (f32, f32) {
         CardContent::Shelf(c) => (370.0, crate::activities::shelf::card_height_dip(c.tiles.len())),
         CardContent::Game(_) => (370.0, GAME_COVER_DIP.1 + 48.0),
         CardContent::Wellbeing(c) => (370.0, wellbeing_height_dip(c)),
+        CardContent::Away(c) => (370.0, BRIEF_HEADER + BRIEF_GAP + away_panel_dip(c) + 12.0),
     }
 }
 
@@ -636,7 +677,8 @@ fn brief_height_dip(b: &BriefCard) -> f32 {
     let matches = if b.matches.is_empty() { 0.0 } else { BRIEF_GAP + 16.0 + b.matches.len() as f32 * BRIEF_MATCH_ROW };
     let music = if b.music.is_some() { BRIEF_GAP + BRIEF_MUSIC } else { 0.0 };
     let screen = if b.screen.is_some() { BRIEF_GAP + BRIEF_MUSIC } else { 0.0 };
-    BRIEF_HEADER + weather + matches + music + screen + 12.0
+    let away = if b.away.is_some() { BRIEF_GAP + BRIEF_MUSIC } else { 0.0 };
+    BRIEF_HEADER + weather + matches + music + screen + away + 12.0
 }
 
 // The brief's sections (DIP): the greeting to the date's bottom, the gap before each section,
@@ -661,7 +703,14 @@ pub fn card_radius_dip(c: &CardContent) -> f32 {
     match c {
         CardContent::Timer(_) | CardContent::Stopwatch(_) | CardContent::Live(_) => card_size_dip(c).1 / 2.0,
         CardContent::Claude(_) | CardContent::App(_) => 36.0,
-        CardContent::Picker(_) | CardContent::Buds(_) | CardContent::Weather(_) | CardContent::Shelf(_) | CardContent::Brief(_) | CardContent::Game(_) | CardContent::Wellbeing(_) => 36.0,
+        CardContent::Picker(_)
+        | CardContent::Buds(_)
+        | CardContent::Weather(_)
+        | CardContent::Shelf(_)
+        | CardContent::Brief(_)
+        | CardContent::Game(_)
+        | CardContent::Wellbeing(_)
+        | CardContent::Away(_) => 36.0,
         CardContent::Media(_) | CardContent::Match(_) => 32.0,
     }
 }
@@ -695,7 +744,7 @@ pub fn card_tint(c: &CardContent) -> Option<(windows::UI::Color, windows::UI::Co
 
 pub fn card_accent(c: &CardContent) -> (u8, u8, u8) {
     match c {
-        CardContent::Timer(_) | CardContent::Stopwatch(_) | CardContent::Picker(_) | CardContent::Shelf(_) => timer_accent(),
+        CardContent::Timer(_) | CardContent::Stopwatch(_) | CardContent::Picker(_) | CardContent::Shelf(_) | CardContent::Away(_) => timer_accent(),
         CardContent::Live(l) if l.claude => CLAUDE_ACCENT,
         CardContent::Claude(_) => CLAUDE_ACCENT,
         CardContent::App(a) => a.accent,
@@ -813,6 +862,7 @@ pub fn paint_card(ink: &Ink, c: &CardContent, s: &Scale, w: f32, h: f32) -> Resu
         }
         CardContent::Game(g) => p.game(g),
         CardContent::Wellbeing(c) => p.wellbeing(c),
+        CardContent::Away(c) => p.away(c),
     }?;
     Ok(out)
 }
@@ -1609,20 +1659,121 @@ impl Painter<'_, '_> {
         // Dijital Denge, in the music panel's shape: the heart where the cover is.
         if let Some((head, sub)) = &c.screen {
             y += BRIEF_GAP;
-            let panel = rect(d(12.0), d(y), self.w - d(24.0), d(BRIEF_MUSIC));
-            self.ink.rrect(panel, d(24.0), white(0.06))?;
-            let (r, g, b) = WELLBEING_ACCENT;
-            let mark = rect(d(24.0), d(y + 12.0), d(36.0), d(36.0));
-            self.ink.rrect(mark, d(18.0), rgba(r, g, b, 1.0))?;
-            self.ink.text(WELLBEING_GLYPH, mark, &TextStyle::new(Face::Icons, Weight::Regular, d(17.0), white(1.0)).centered())?;
-            let text_w = self.w - d(72.0) - d(40.0);
-            self.ink.text(head, rect(d(72.0), d(y + 11.0), text_w, d(20.0)), &TextStyle::new(Face::Text, Weight::SemiBold, d(12.5), white(1.0)).top().ellipsis())?;
-            self.ink.text(sub, rect(d(72.0), d(y + 31.0), text_w, d(18.0)), &TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).top().ellipsis())?;
-            let chevron = rect(self.w - d(24.0) - d(24.0), d(y + 18.0), d(24.0), d(24.0));
-            self.ink.text("\u{E76C}", chevron, &TextStyle::new(Face::Icons, Weight::Regular, d(12.0), white(0.6)).centered())?;
-            self.hits.push((panel, CardAction::BriefScreen));
+            self.brief_link(y, WELLBEING_ACCENT, WELLBEING_GLYPH, (head, sub), CardAction::BriefScreen)?;
+            y += BRIEF_MUSIC;
+        }
+        if let Some((head, sub)) = &c.away {
+            y += BRIEF_GAP;
+            self.brief_link(y, timer_accent(), &glyph(Icon::History).to_string(), (head, sub), CardAction::BriefAway)?;
         }
         Ok(())
+    }
+
+    /// A brief row that opens another card, in the music panel's shape: the mark where the cover
+    /// is, two lines, a chevron (`y` in DIP).
+    fn brief_link(&mut self, y: f32, (r, g, b): (u8, u8, u8), mark_glyph: &str, (head, sub): (&str, &str), action: CardAction) -> Result<()> {
+        let d = |v: f32| v * self.s.0;
+        let panel = rect(d(12.0), d(y), self.w - d(24.0), d(BRIEF_MUSIC));
+        self.ink.rrect(panel, d(24.0), white(0.06))?;
+        let mark = rect(d(24.0), d(y + 12.0), d(36.0), d(36.0));
+        self.ink.rrect(mark, d(18.0), rgba(r, g, b, 1.0))?;
+        self.ink.text(mark_glyph, mark, &TextStyle::new(Face::Icons, Weight::Regular, d(17.0), white(1.0)).centered())?;
+        let text_w = self.w - d(72.0) - d(40.0);
+        self.ink.text(head, rect(d(72.0), d(y + 11.0), text_w, d(20.0)), &TextStyle::new(Face::Text, Weight::SemiBold, d(12.5), white(1.0)).top().ellipsis())?;
+        self.ink.text(sub, rect(d(72.0), d(y + 31.0), text_w, d(18.0)), &TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).top().ellipsis())?;
+        let chevron = rect(self.w - d(24.0) - d(24.0), d(y + 18.0), d(24.0), d(24.0));
+        self.ink.text("\u{E76C}", chevron, &TextStyle::new(Face::Icons, Weight::Regular, d(12.0), white(0.6)).centered())?;
+        self.hits.push((panel, action));
+        Ok(())
+    }
+
+    /// "Sen yokken" and the span with the accent's mark, then the rows: each one's mark, what
+    /// happened and when, newest first.
+    fn away(&mut self, c: &AwayCard) -> Result<()> {
+        let d = |v: f32| v * self.s.0;
+        let title = TextStyle::new(Face::Display, Weight::Bold, d(22.0), white(1.0)).top().ellipsis();
+        self.ink.text(tr("Sen yokken"), rect(d(20.0), d(20.0), self.w - d(100.0), d(30.0)), &title)?;
+        let sub = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).top().ellipsis();
+        self.ink.text(&c.span, rect(d(20.0), d(52.0), self.w - d(100.0), d(18.0)), &sub)?;
+        let (r, g, b) = timer_accent();
+        let mark = rect(self.w - d(20.0) - d(40.0), d(22.0), d(40.0), d(40.0));
+        self.ink.rrect(mark, d(20.0), rgba(r, g, b, 1.0))?;
+        self.ink.text(&glyph(Icon::History).to_string(), mark, &TextStyle::new(Face::Icons, Weight::Regular, d(19.0), white(1.0)).centered())?;
+        let top = BRIEF_HEADER + BRIEF_GAP;
+        self.ink.rrect(rect(d(12.0), d(top), self.w - d(24.0), d(away_panel_dip(c))), d(24.0), white(0.06))?;
+        let mut y = top + 8.0;
+        let text = TextStyle::new(Face::Text, Weight::SemiBold, d(13.0), white(1.0)).ellipsis();
+        let time = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).trailing().tabular();
+        for row in &c.rows {
+            let side = d(28.0).round();
+            let dot = rect(d(24.0).round(), (d(y + AWAY_ROW / 2.0) - side / 2.0).round(), side, side);
+            match &row.crest {
+                // The match card's crest look: on a faint circle, a fifth in from its edge.
+                Some(c) => {
+                    self.ink.rrect(dot, side / 2.0, white(0.10))?;
+                    let inner = rect(dot.left + side * 0.1, dot.top + side * 0.1, side * 0.8, side * 0.8);
+                    self.ink.image_rounded(&c.px, c.size, rect(0.0, 0.0, c.size.0 as f32, c.size.1 as f32), inner, 0.0)?;
+                }
+                None => self.away_mark(row.kind, dot)?,
+            }
+            let tw = self.ink.measure(&row.time, &time)? + d(1.0);
+            let right = self.w - d(28.0);
+            self.ink.text(&row.time, rect(right - tw, d(y), tw, d(AWAY_ROW)), &time)?;
+            self.ink.text(&row.text, rect(d(64.0), d(y), (right - tw - d(12.0) - d(64.0)).max(0.0), d(AWAY_ROW)), &text)?;
+            y += AWAY_ROW;
+        }
+        if c.more > 0 {
+            let more = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.6));
+            self.ink.text(&trf("+{} daha", &[&c.more]), rect(d(64.0), d(y), self.w - d(92.0), d(AWAY_MORE - 6.0)), &more)?;
+        }
+        Ok(())
+    }
+
+    /// A row's mark: its kind's colour and glyph, as its own pill draws it.
+    fn away_mark(&self, kind: AwayKind, dot: D2D_RECT_F) -> Result<()> {
+        let side = dot.right - dot.left;
+        let fill = |(r, g, b): (u8, u8, u8)| self.ink.rrect(dot, side / 2.0, rgba(r, g, b, 1.0));
+        let icon = |i: Icon| self.ink.text(&glyph(i).to_string(), dot, &TextStyle::new(Face::Icons, Weight::Regular, side * 0.5, white(1.0)).centered());
+        match kind {
+            AwayKind::Claude => {
+                fill(CLAUDE_ACCENT)?;
+                paint_live_mark(self.ink, dot, true, LiveState::Run, side * 0.5)
+            }
+            AwayKind::Live => {
+                fill(timer_accent())?;
+                icon(Icon::Check)
+            }
+            AwayKind::Match => {
+                self.ink.rrect(dot, side / 2.0, white(0.12))?;
+                self.ink.text("\u{26BD}", dot, &TextStyle::new(Face::Text, Weight::Regular, side * 0.55, white(1.0)).centered().emoji())
+            }
+            AwayKind::Rain { snow } => {
+                fill(if snow { SNOW_ACCENT } else { RAIN_ACCENT })?;
+                self.ink.svg(if snow { SNOW_ICON } else { RAIN_ICON }, dot, white(1.0))
+            }
+            AwayKind::Alert(k) => {
+                let (colour, svg) = alert_style(k);
+                fill(colour)?;
+                self.ink.svg(svg, dot, white(1.0))
+            }
+            AwayKind::Game(store) => {
+                fill(store_accent(store))?;
+                icon(Icon::Download)
+            }
+            AwayKind::Timer => {
+                fill(timer_accent())?;
+                icon(Icon::Timer)
+            }
+            AwayKind::Battery => {
+                fill(LOW_ACCENT)?;
+                // Battery10: the low one.
+                self.ink.text("\u{EBA1}", dot, &TextStyle::new(Face::Icons, Weight::Regular, side * 0.5, white(1.0)).centered())
+            }
+            AwayKind::App(accent) => {
+                fill(accent)?;
+                icon(Icon::Bell)
+            }
+        }
     }
 
     /// The day's total and how it compares; the week's bars (today in green); the apps used
@@ -2108,7 +2259,23 @@ mod tests {
             matches: (0..matches).map(|_| BriefMatchRow { home: team(), away: team(), status: "20:00 · Süper Lig".into(), live: false }).collect(),
             music: music.then(|| BriefMusic { title: "t".into(), artist: "a".into(), art: None, art_size: (0, 0), playing: true }),
             screen: screen.then(|| ("Ekran süresi · 3 sa 40 dk".into(), "Bugün · VS Code 1 sa 50 dk".into())),
+            away: None,
         }
+    }
+
+    #[test]
+    fn the_away_row_is_the_screen_rows_shape() {
+        let h = |b: BriefCard| card_size_dip(&CardContent::Brief(Box::new(b))).1;
+        let back = BriefCard { away: Some(("Sen yokken · 4 şey".into(), "Claude bitti · now-bar".into())), ..brief(false, false, 0, false, false) };
+        assert_eq!(h(back), 84.0 + 68.0);
+    }
+
+    #[test]
+    fn the_away_card_is_as_tall_as_its_rows() {
+        let row = || AwayRow { kind: AwayKind::Timer, text: "Zamanlayıcı bitti".into(), time: "17:05".into(), crest: None };
+        let card = |n: usize, more: usize| CardContent::Away(Box::new(AwayCard { span: String::new(), rows: (0..n).map(|_| row()).collect(), more }));
+        assert_eq!(card_size_dip(&card(1, 0)), (370.0, 72.0 + 8.0 + 16.0 + 44.0 + 12.0), "the header, the panel round one row");
+        assert_eq!(card_size_dip(&card(6, 3)).1, 72.0 + 8.0 + 16.0 + 6.0 * 44.0 + 28.0 + 12.0, "and the +3 daha line");
     }
 
     #[test]

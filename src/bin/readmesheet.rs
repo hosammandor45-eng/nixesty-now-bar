@@ -309,6 +309,7 @@ fn main() -> Result<()> {
         matches: vec![BriefMatchRow { home: fb.clone(), away: gs.clone(), status: "20:00 · Süper Lig".into(), live: false }],
         music: Some(BriefMusic { title: m.title.clone(), artist: m.artist.clone(), art: Some(art.px.clone()), art_size: (side, side), playing: false }),
         screen: Some(("Ekran süresi · 3 sa 40 dk".into(), "Bugün · VS Code 1 sa 50 dk".into())),
+        away: None,
     };
     sheet.card("card-brief", &CardContent::Brief(Box::new(brief)), &s)?;
     sheet.card("card-shelf", &CardContent::Shelf(shelf(5, s.px(75.0) as u32)), &s)?;

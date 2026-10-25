@@ -2,6 +2,7 @@
 
 pub mod api;
 pub mod api_desk;
+pub mod away;
 pub mod basketball;
 pub mod basketball_worker;
 pub mod brief;
@@ -67,6 +68,8 @@ pub enum ActivityKind {
     Game(u32),
     /// An app went past its daily limit (Dijital Denge): for a moment.
     Usage,
+    /// Back from a lock: "Sen yokken · 4 şey", for a moment.
+    Away,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -114,6 +117,7 @@ pub fn settings_page_for(kind: ActivityKind) -> u8 {
         | ActivityKind::Rain
         | ActivityKind::WeatherAlert
         | ActivityKind::Capture
+        | ActivityKind::Away
         | ActivityKind::Live(_) => 8,
         ActivityKind::Game(_) => 9,
         ActivityKind::Usage => 10,
@@ -125,7 +129,15 @@ pub fn settings_page_for(kind: ActivityKind) -> u8 {
 pub fn has_card(kind: ActivityKind) -> bool {
     !matches!(
         kind,
-        ActivityKind::Volume | ActivityKind::Power | ActivityKind::Privacy | ActivityKind::Headset(_) | ActivityKind::Rain | ActivityKind::WeatherAlert | ActivityKind::Capture | ActivityKind::Usage
+        ActivityKind::Volume
+            | ActivityKind::Power
+            | ActivityKind::Privacy
+            | ActivityKind::Headset(_)
+            | ActivityKind::Rain
+            | ActivityKind::WeatherAlert
+            | ActivityKind::Capture
+            | ActivityKind::Usage
+            | ActivityKind::Away
     )
 }
 
@@ -204,6 +216,8 @@ fn rank(p: &Presence, now_ms: u64, keep_ms: u64, buds_front: u64) -> Option<u8> 
         (ActivityKind::Game(_), _) => Some(6),
         (ActivityKind::Usage, _) if age < USAGE_MOMENT_MS => Some(1),
         (ActivityKind::Usage, _) => None,
+        (ActivityKind::Away, _) if age < away::AWAY_MOMENT_MS => Some(1),
+        (ActivityKind::Away, _) => None,
     }
 }
 
@@ -341,6 +355,17 @@ mod tests {
         assert!(!stack_order(&live, 1_000 + USAGE_MOMENT_MS + 1, picked).contains(&Usage));
         assert!(!has_card(Usage), "its pill opens the Dijital Denge card, not a stack card");
         assert_eq!(settings_page_for(Usage), 10);
+    }
+
+    #[test]
+    fn the_away_moment_leads_for_eight_seconds_without_a_card() {
+        use super::away::AWAY_MOMENT_MS;
+        let live = [p(Media(1), Playing, 100), p(Away, Moment, 1_000)];
+        let picked = Some((Media(1), 2_000));
+        assert_eq!(stack_order(&live, 8_900, picked).first(), Some(&Away), "ahead of the pick while it lasts");
+        assert!(!stack_order(&live, 1_000 + AWAY_MOMENT_MS + 1, picked).contains(&Away));
+        assert!(!has_card(Away), "its pill opens the away card, not a stack card");
+        assert_eq!(settings_page_for(Away), 8);
     }
 
     #[test]

@@ -1853,6 +1853,14 @@ export component SystemInspector inherits VerticalLayout {
                 }
             }
         }
+        IRow {
+            label: @tr("Sen yokken");
+            note: @tr("Kilidi açınca, kilitliyken olanlar");
+            Toggle {
+                checked <=> Store.away-summary;
+                toggled => { Ui.changed(); }
+            }
+        }
     }
     ISection {
         title: @tr("Saat ve hava");

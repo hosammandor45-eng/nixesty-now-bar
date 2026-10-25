@@ -64,6 +64,8 @@ pub enum UiEvent {
     Resume,
     /// The session was unlocked.
     Unlocked,
+    /// The session was locked.
+    Locked,
     /// Plugged in or out, or the battery level changed.
     PowerChanged,
     /// The apps using the microphone or the camera changed.
@@ -426,6 +428,8 @@ extern "system" fn main_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LR
         WM_WTSSESSION_CHANGE => {
             if wp.0 == WTS_SESSION_UNLOCK as usize {
                 push_event(UiEvent::Unlocked);
+            } else if wp.0 == WTS_SESSION_LOCK as usize {
+                push_event(UiEvent::Locked);
             }
             LRESULT(0)
         }

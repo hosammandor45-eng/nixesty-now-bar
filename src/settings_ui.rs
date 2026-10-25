@@ -100,6 +100,7 @@ pub const INDEX: &[Entry] = &[
     e(8, "headsets-on", n_("Diğer kulaklıklar"), n_("Diğer kulaklıkları göster"), n_("Galaxy Buds dışındaki Bluetooth kulaklıklar, pilleriyle"), "kulaklık bluetooth pil sony airpods jbl"),
     e(8, "brief-morning", n_("Now Brief"), n_("Sabah Now Brief"), n_("Günün ilk kilit açılışında günaydın kartı: hava, maçlar, müzik"), "brief now brief sabah özet ozet günaydın gunaydin kart kilit"),
     e(8, "brief-name", n_("Now Brief"), n_("Selamlamadaki adın"), n_("Boşsa Windows hesabındaki ad"), "ad adın isim selamlama günaydın brief"),
+    e(8, "away-summary", n_("Now Brief"), n_("Sen yokken"), n_("Kilidi açınca, kilitliyken olanlar pilde bir an ve bir listede: Claude, goller, yağmur, indirmeler"), "sen yokken kilit kaçırdım özet ne oldu claude gol yağmur indirme"),
     e(8, "idle-clock", n_("Saat ve hava"), n_("Boşta saat ve hava"), n_("Etkinlik yokken pil gizlenmez; saati, tarihi ve havayı gösterir"), "saat tarih hava durumu boşta idle clock"),
     e(8, "weather-in-stack", n_("Saat ve hava"), n_("Havayı hep göster"), n_("Başka etkinlikler varken hava yığının en arkasında durur"), "hava durumu yığın arka her zaman"),
     e(8, "weather-effects", n_("Saat ve hava"), n_("Hava efektleri"), n_("Kar, yağmur, güneş ve yıldızlar havanın arkasında hareket eder"), "efekt animasyon kar yağmur güneş yıldız fırtına sis bulut"),

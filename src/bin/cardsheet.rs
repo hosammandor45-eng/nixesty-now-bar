@@ -5,7 +5,7 @@ use nowbar::activities::buds::{BudsSnapshot, NoiseControl};
 use nowbar::activities::media::{Caps, MediaSnapshot, Timeline};
 use nowbar::platform::audio::{list_outputs, output_volume, picker_order, OutputBus, OutputKind};
 use nowbar::activities::live::{AppIcon, LiveState};
-use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
+use nowbar::render::card::{card_size_dip, card_tint, output_subline, paint_card, AppCard, AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardContent, CardTeam, ClaudeAsk, ClaudeCard, LiveCard, LyricsView, MediaCard, MediaPage, OutputPage, OutputRow, ShelfCard, ShelfTile, SubTone, WeatherCard, GameCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP};
 use nowbar::activities::games::Store;
 use nowbar::activities::shelf::file_kind;
 use nowbar::activities::claude::StepKind;
@@ -115,6 +115,24 @@ fn game_card(store: Store, title: &str, cover: &str, status: &str, detail: &str,
     let cover = nowbar::render::crest::load_cover(std::path::Path::new(cover), w, h);
     let paused = status.starts_with("Duraklatıldı");
     CardContent::Game(Box::new(GameCard { store, title: title.into(), cover, status: status.into(), detail: detail.into(), progress, paused }))
+}
+
+/// Back from a lock: one row of each kind (made up).
+fn away_card() -> AwayCard {
+    use nowbar::activities::away::{self, AwayKind};
+    let row = |kind, text: String, time: &str| AwayRow { kind, text, time: time.into(), crest: None };
+    AwayCard {
+        span: away::span_text(14 * 3600 + 120, 17 * 3600 + 14 * 60),
+        rows: vec![
+            row(AwayKind::Claude, away::claude_done("now-bar"), "17:09"),
+            row(AwayKind::Match, away::goal_text("GS", "FB", (1, 0), "67′"), "16:52"),
+            row(AwayKind::Rain { snow: false }, away::rain_text(false).into(), "16:20"),
+            row(AwayKind::Game(Store::Epic), away::download_done("Rocket League"), "15:41"),
+            row(AwayKind::App((0x58, 0x65, 0xF2)), away::app_text("Discord", "Ekin: akşam maç var mı?"), "15:03"),
+            row(AwayKind::Battery, away::battery_text(15), "14:30"),
+        ],
+        more: 2,
+    }
 }
 
 fn claude_card(state: LiveState, thinking: bool, ask: bool, focus: bool) -> ClaudeCard {
@@ -233,7 +251,8 @@ fn main() -> Result<()> {
             BriefMatchRow { home: gs.clone(), away: fb.clone(), status: "2–1 · Dün".into(), live: false },
         ],
         music: Some(BriefMusic { title: "GEM DELÍRIO (Slowed)".into(), artist: "ZXVRF".into(), art: Some(cover.px.clone()), art_size: cover.size, playing: false }),
-        screen: Some(("Ekran süresi · 3 sa 40 dk".into(), "Bugün · VS Code 1 sa 50 dk".into())),
+        screen: None,
+        away: Some((format!("{} · {}", nowbar::i18n::tr("Sen yokken"), nowbar::activities::away::count_text(4)), nowbar::activities::away::claude_done("now-bar"))),
     };
     let short = BriefCard {
         greeting: "İyi akşamlar".into(),
@@ -241,7 +260,8 @@ fn main() -> Result<()> {
         weather: None,
         matches: vec![],
         music: Some(BriefMusic { title: "Sabah olunca".into(), artist: "Gece Yolcuları".into(), art: None, art_size: (0, 0), playing: true }),
-        screen: None,
+        screen: Some(("Ekran süresi · 3 sa 40 dk".into(), "Bugün · VS Code 1 sa 50 dk".into())),
+        away: None,
     };
     let cards = [
         CardContent::Brief(Box::new(full)),
@@ -263,6 +283,7 @@ fn main() -> Result<()> {
                 .map(|(name, time, share)| WellbeingApp { name: name.into(), icon: None, time: time.into(), share })
                 .collect(),
         })),
+        CardContent::Away(Box::new(away_card())),
         game_card(Store::Steam, "THE FINALS", r"C:\Program Files (x86)\Steam\appcache\librarycache\2073850\6d9cfdeaea9f822d8f4af42d8f0dbd083e81f64e\library_capsule.jpg", "İndiriliyor · %48", "1,2 GB / 2,5 GB · 18 MB/sn · ~2 dk kaldı", Some(0.48), &s),
         game_card(Store::Epic, "Fortnite", &epic("39cbca1529a42219a35ddece5acaf84f"), "Güncelleniyor · 4:12", "Başladı 22:41", None, &s),
         game_card(Store::Epic, "Rocket League", "", "Oynuyor · 34 dk", "Başladı 21:10", None, &s),

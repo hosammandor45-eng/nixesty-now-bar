@@ -98,6 +98,8 @@ fn main() -> Result<()> {
         ("Oynadın", game(Store::Epic, "Fortnite", "2 sa 14 dk oynadın", None, art(&epic(EPIC_COVER), &s), false)),
         ("Sınır", PillContent::Usage { app: "Discord".into(), text: "2 saati geçtin".into() }),
         ("Sınır (uzun)", PillContent::Usage { app: "Visual Studio Code".into(), text: "1 saat 30 dakikayı geçtin".into() }),
+        ("Sen yokken", PillContent::Away { count: nowbar::activities::away::count_text(4) }),
+        ("Sen yokken (çok)", PillContent::Away { count: nowbar::activities::away::count_text(12) }),
         ("Claude çalışıyor", PillContent::Live { key: 1, title: "now-bar".into(), status: "4:12".into(), claude: true, state: LiveState::Run, action: "Düzenliyor: app.rs".into() }),
         ("Claude izin", PillContent::Live { key: 1, title: "now-bar".into(), status: "İzin istiyor".into(), claude: true, state: LiveState::Wait, action: "Bash".into() }),
         ("Claude bitti", PillContent::Live { key: 1, title: "now-bar".into(), status: "Bitti".into(), claude: true, state: LiveState::Done, action: String::new() }),

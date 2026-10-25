@@ -217,6 +217,8 @@ pub struct Settings {
     pub brief_morning: bool,
     /// The greeting's name; empty: the Windows account's.
     pub brief_name: String,
+    /// Back from a lock: what happened meanwhile, a moment in the pill and a list.
+    pub away_summary: bool,
     /// Rain or snow about to start in that city shows for a moment.
     pub rain_moment: bool,
     /// Thunder, gales, heat, frost and bad air there show for a moment (and on the weather card).
@@ -339,6 +341,7 @@ impl Default for Settings {
             weather_effects: true,
             brief_morning: true,
             brief_name: String::new(),
+            away_summary: true,
             rain_moment: true,
             weather_alerts: true,
             live_enabled: true,
@@ -729,6 +732,12 @@ mod tests {
         assert!(old.wellbeing_on && old.wellbeing_in_brief && old.wellbeing_limit_moments && old.wellbeing_limits.is_empty());
         let s = parse(r#"{"wellbeing_limits": [{"exe": "Discord.exe", "minutes": 120}, {"exe": "x.exe", "minutes": 0}, {"exe": "y.exe", "minutes": 99999}]}"#);
         assert_eq!(s.wellbeing_limits, vec![AppLimit { exe: "Discord.exe".into(), minutes: 120 }, AppLimit { exe: "y.exe".into(), minutes: 1440 }]);
+    }
+
+    #[test]
+    fn the_away_summary_is_on_by_default() {
+        let old: Settings = serde_json::from_str(r#"{"enabled": true}"#).unwrap();
+        assert!(old.away_summary, "an older file: back from a lock, what happened meanwhile");
     }
 
     #[test]

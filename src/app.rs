@@ -24,7 +24,7 @@ use crate::activities::football_worker::crest_path;
 use crate::render::color::{accent_from_rgba, team_palette, TeamPalette};
 use crate::render::crest::{load_crest, Crest};
 use crate::render::pill::{MatchPill, MomentKind, PillMoment, PillTeam, PillThumb};
-use crate::render::card::{BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardTeam, ClaudeAsk, ClaudeCard, GameCard, LiveCard, MatchCard, ShelfCard, ShelfTile, WeatherCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP, LYRIC_MOVE_MS};
+use crate::render::card::{AwayCard, AwayRow, BriefCard, BriefMatchRow, BriefMusic, BriefWeather, CardTeam, ClaudeAsk, ClaudeCard, GameCard, LiveCard, MatchCard, ShelfCard, ShelfTile, WeatherCard, WellbeingApp, WellbeingCard, GAME_COVER_DIP, LYRIC_MOVE_MS};
 use crate::activities::brief::{date_line, day_key, due, first_name, greeting, pick_matches, rain_later, should_auto_open};
 use crate::platform::session::{brief_day, set_brief_day, windows_full_name};
 use crate::activities::shelf::Shelf;
@@ -50,6 +50,7 @@ use crate::activities::wellbeing_worker::{WellbeingBox, WellbeingMailbox};
 use crate::activities::island::{island_wants, on_island, ISLAND_MS};
 use crate::render::island::Island;
 use crate::activities::capture::{size_text, CAPTURE_MOMENT_MS};
+use crate::activities::away::{self, AwayItem, AwayKind, AwayLog, AwayReport, AWAY_MOMENT_MS};
 use crate::activities::claude::{done_status, step_label, task_progress};
 use crate::platform::captures::{Capture, CaptureMailbox};
 use crate::activities::live::{live_key, pill_status, push_id_ok, AppIcon, AppMeta, LiveItem, LiveSet, LiveState};
@@ -171,6 +172,15 @@ enum OpenCard {
     Brief,
     /// Dijital Denge: today's screen time, the week, the apps.
     Wellbeing,
+    /// What happened while the PC was locked.
+    Away,
+}
+
+impl OpenCard {
+    /// Grows out of the pill and shrinks back into it (the picker slides up on its own).
+    fn grows_from_pill(self) -> bool {
+        !matches!(self, OpenCard::Picker)
+    }
 }
 
 /// The sound a match moment plays: the settings' goal sound, for a goal of the followed team only.
@@ -213,6 +223,12 @@ pub fn drag_paths(shelf: &Shelf, tile: Option<usize>) -> Vec<PathBuf> {
 }
 
 /// Plays one of Windows' sounds (C:\Windows\Media\<name>.wav), without waiting.
+/// The away card from a report: the span and the first rows, in local time.
+pub fn away_card(r: &AwayReport, offset_s: i64) -> AwayCard {
+    let rows = r.items.iter().take(away::CARD_ROWS).map(|i| AwayRow { kind: i.kind, text: i.text.clone(), time: away::hhmm(i.at_utc + offset_s), crest: None }).collect();
+    AwayCard { span: away::span_text(r.since_utc + offset_s, r.until_utc + offset_s), rows, more: r.items.len().saturating_sub(away::CARD_ROWS) }
+}
+
 fn play_windows_sound(name: &str) {
     let windir = std::env::var("WINDIR").unwrap_or_else(|_| r"C:\Windows".into());
     let sound = HSTRING::from(format!(r"{windir}\Media\{name}.wav"));
@@ -718,6 +734,10 @@ pub struct App {
     wellbeing_box: WellbeingMailbox,
     usage_moment: Option<(String, u32, u64)>,
     app_icons: HashMap<PathBuf, Option<Crest>>,
+    /// "Sen yokken": what a lock notes, the last unlock's report and its moment's start (ms).
+    away_log: AwayLog,
+    away: Option<AwayReport>,
+    away_moment: Option<u64>,
     /// Box art decoded at a size, per (file, width, height).
     covers: std::cell::RefCell<HashMap<(PathBuf, u32, u32), Option<Crest>>>,
     /// The idle pill's weather (`None` without a city or an answer).
@@ -918,6 +938,9 @@ impl App {
             wellbeing_box,
             usage_moment: None,
             app_icons: HashMap::new(),
+            away_log: AwayLog::default(),
+            away: None,
+            away_moment: None,
             weather: None,
             card_fx: None,
             weather_mailbox,
@@ -1170,6 +1193,9 @@ impl App {
         if let Some((_, at)) = self.alert_moment.filter(|_| s.weather_alerts) {
             p.push(Presence { kind: ActivityKind::WeatherAlert, state: PresenceState::Moment, changed_ms: at });
         }
+        if let Some(at) = self.away_moment.filter(|_| s.away_summary && self.away.is_some()) {
+            p.push(Presence { kind: ActivityKind::Away, state: PresenceState::Moment, changed_ms: at });
+        }
         if let Some((_, at)) = self.capture.as_ref().filter(|_| s.capture_moment) {
             p.push(Presence { kind: ActivityKind::Capture, state: PresenceState::Moment, changed_ms: *at });
         }
@@ -1346,8 +1372,15 @@ impl App {
             })
             .collect();
         let music = self.brief_media().map(|m| BriefMusic { title: m.title.clone(), artist: m.artist.clone(), art: m.art.clone(), art_size: m.art_size, playing: m.playing });
-        let screen = (s.wellbeing_on && s.wellbeing_in_brief).then(|| self.brief_screen(local)).flatten();
-        BriefCard { greeting: name.map_or_else(|| hello.to_string(), |n| format!("{hello}, {n}")), date: date_line(local), weather, matches, music, screen }
+        // Just back from a lock: what happened meanwhile, its newest row under the count. It takes
+        // the screen time's place (a full brief is as tall as the card window).
+        let away = self
+            .away
+            .as_ref()
+            .filter(|r| s.away_summary && unix_now() - r.until_utc <= away::BRIEF_ROW_S)
+            .and_then(|r| Some((format!("{} · {}", tr("Sen yokken"), away::count_text(r.items.len())), r.items.first()?.text.clone())));
+        let screen = (s.wellbeing_on && s.wellbeing_in_brief && away.is_none()).then(|| self.brief_screen(local)).flatten();
+        BriefCard { greeting: name.map_or_else(|| hello.to_string(), |n| format!("{hello}, {n}")), date: date_line(local), weather, matches, music, screen, away }
     }
 
     /// The brief's screen time: yesterday's in the morning before much of today's, else today's;
@@ -1363,6 +1396,18 @@ impl App {
         }
         let top = u.top(day, 1).first().map(|(exe, secs)| format!(" · {} {}", self.app_display(exe), played_text(*secs as i64))).unwrap_or_default();
         Some((trf("Ekran süresi · {}", &[&played_text(total as i64)]), format!("{word}{top}")))
+    }
+
+    /// The away card, a match row with its followed team's crest (while the match is still known).
+    fn away_card_shown(&self, r: &AwayReport) -> AwayCard {
+        let mut card = away_card(r, tz_offset_s());
+        let px = self.ui.card_scale.px(28.0 * 0.8).round() as u32;
+        for (row, item) in card.rows.iter_mut().zip(&r.items) {
+            let Some(m) = item.key.strip_prefix("match:").and_then(|id| self.matches.iter().find(|m| m.id == id)) else { continue };
+            let team = if m.followed == Some(Side::Away) { &m.away } else { &m.home };
+            row.crest = self.crest_for(&team.id, px);
+        }
+        card
     }
 
     /// An app's name: the worker's (its file's description), else its file name.
@@ -1552,6 +1597,7 @@ impl App {
             ActivityKind::Rain => self.rain_moment.map(|(r, _)| PillContent::Rain { snow: r.snow, when: rain_when(r.minutes) }),
             ActivityKind::Game(key) => self.game_pill(key, now),
             ActivityKind::Usage => self.usage_moment.as_ref().map(|(exe, minutes, _)| PillContent::Usage { app: self.app_display(exe), text: limit_text(*minutes) }),
+            ActivityKind::Away => self.away.as_ref().map(|r| PillContent::Away { count: away::count_text(r.items.len()) }),
             ActivityKind::WeatherAlert => self.alert_moment.map(|(a, _)| {
                 let (head, detail) = alert_text(&a, unix_now(), self.weather.as_ref().map_or_else(tz_offset_s, |w| w.utc_offset_s));
                 PillContent::WeatherAlert { kind: a.kind, head: head.to_string(), detail }
@@ -1595,6 +1641,7 @@ impl App {
             OpenCard::Picker => Some(CardContent::Picker(self.picker)),
             OpenCard::Brief => Some(CardContent::Brief(Box::new(self.brief_card(now)))),
             OpenCard::Wellbeing => Some(CardContent::Wellbeing(Box::new(self.wellbeing_card()))),
+            OpenCard::Away => self.away.as_ref().map(|r| CardContent::Away(Box::new(self.away_card_shown(r)))),
             OpenCard::Activity(ActivityKind::Timer) => self.timer.as_ref().map(|slot| {
                 let state = slot.t.state(now);
                 let done = state == RunState::Done;
@@ -1636,6 +1683,7 @@ impl App {
                 | ActivityKind::Rain
                 | ActivityKind::WeatherAlert
                 | ActivityKind::Usage
+                | ActivityKind::Away
                 | ActivityKind::Capture,
             ) => None,
             OpenCard::Activity(ActivityKind::Shelf) => (!self.shelf.is_empty()).then(|| {
@@ -1754,6 +1802,46 @@ impl App {
         }
     }
 
+    /// Keeps what happened for the "Sen yokken" list while the PC is locked.
+    fn note_away(&mut self, key: String, kind: AwayKind, text: String) {
+        if self.away_log.locked() {
+            log(&format!("away: noted {key}"));
+            self.away_log.note(AwayItem { key, kind, text, at_utc: unix_now() });
+        }
+    }
+
+    fn live_states(&self) -> Vec<(u32, LiveState)> {
+        self.live.items().iter().map(|i| (i.key, i.state)).collect()
+    }
+
+    /// Notes the live items that finished, and the apps' notifications that came, since `before`.
+    fn note_live(&mut self, before: &[(u32, LiveState)]) {
+        if !self.away_log.locked() {
+            return;
+        }
+        let mut notes = Vec::new();
+        for i in self.live.items() {
+            let was = before.iter().find(|(k, _)| *k == i.key).map(|(_, s)| *s);
+            let done = i.state == LiveState::Done && was != Some(LiveState::Done);
+            match &i.app {
+                Some(app) if app.prompt => {}
+                Some(app) if app.life_ms.is_some() || done => {
+                    let accent = app.accent.unwrap_or_else(crate::render::pill::timer_accent);
+                    let what = if done && app.life_ms.is_none() { away::live_done(&i.title) } else { i.title.clone() };
+                    if was.is_none() || done {
+                        notes.push((format!("app:{}", i.key), AwayKind::App(accent), away::app_text(&app.name, &what)));
+                    }
+                }
+                None if done && i.claude => notes.push((format!("live:{}", i.key), AwayKind::Claude, away::claude_done(&i.title))),
+                None if done => notes.push((format!("live:{}", i.key), AwayKind::Live, away::live_done(&i.title))),
+                _ => {}
+            }
+        }
+        for (key, kind, text) in notes {
+            self.note_away(key, kind, text);
+        }
+    }
+
     /// The games worker's news: what downloads and runs now, and what ended (its moment).
     fn take_games(&mut self) -> Result<()> {
         let (now, events) = match self.game_box.lock() {
@@ -1766,6 +1854,9 @@ impl App {
             let key = match &e {
                 GameEvent::Updated(g) | GameEvent::Played(g, _) => g.key,
             };
+            if let GameEvent::Updated(g) = &e {
+                self.note_away(format!("game:{key}"), AwayKind::Game(g.store), away::download_done(&g.title));
+            }
             self.game_moments.insert(key, (e, at));
         }
         // Moments long over are let go.
@@ -1936,6 +2027,7 @@ impl App {
         }
         slot.done_seen = true;
         slot.changed_ms = now;
+        self.note_away("timer".into(), AwayKind::Timer, away::timer_done().into());
         let s = settings::current();
         if s.timer_sound != "none" {
             play_windows_sound(&s.timer_sound);
@@ -2015,7 +2107,7 @@ impl App {
                 let why = if self.fullscreen { format!("fullscreen: {}", foreground_exe().unwrap_or_default()) } else { format!("front {:?}", self.stack.first()) };
                 self.note_pill(!self.fullscreen, &why);
                 // An open card shrinks back into the pill as it is now (a new track's colours).
-                if front_changed && matches!((self.open, self.card_state), (Some(OpenCard::Activity(_) | OpenCard::Brief | OpenCard::Wellbeing), CardState::Opening | CardState::Open)) {
+                if front_changed && self.open.is_some_and(OpenCard::grows_from_pill) && matches!(self.card_state, CardState::Opening | CardState::Open) {
                     self.ui.morph.set_pill(&self.ui.pill.look(&front, &self.ui.pill_layout))?;
                 }
                 self.front = Some(front);
@@ -2243,6 +2335,12 @@ impl App {
                 sooner(USAGE_MOMENT_MS - age + 5);
             }
         }
+        if let Some(at) = self.away_moment {
+            let age = now.saturating_sub(at);
+            if age < AWAY_MOMENT_MS {
+                sooner(AWAY_MOMENT_MS - age + 5);
+            }
+        }
         // The island goes back up when its seconds are over.
         if self.ui.island.as_ref().is_some_and(|i| i.is_shown()) {
             if let Some(end) = self.stack.first().and_then(|k| self.island_since(*k)).map(|since| since + ISLAND_MS) {
@@ -2382,6 +2480,10 @@ impl App {
             CardAction::BriefScreen => {
                 self.stop_brief_idle();
                 self.open = Some(OpenCard::Wellbeing);
+            }
+            CardAction::BriefAway => {
+                self.stop_brief_idle();
+                self.open = Some(OpenCard::Away);
             }
             CardAction::BriefPlay => {
                 if let Some(id) = self.brief_media().map(|m| m.id) {
@@ -2527,18 +2629,24 @@ impl App {
             }
             let now = now_ms();
             let s = settings::current();
+            // While locked, each match's latest: a goal's score and minute, the final whistle.
+            let mut away_notes: Vec<(String, String)> = Vec::new();
             for new in &matches {
-                // A basket is no goal: basketball has no moments.
-                if crate::activities::basketball::is_basketball(&new.league) {
-                    continue;
-                }
                 let Some(old) = self.matches.iter().find(|o| o.id == new.id) else { continue };
-                if !(old.status.is_live() || new.status.is_live()) {
+                if old.status.is_live() && new.status.is_finished() {
+                    away_notes.push((format!("match:{}", new.id), away::full_time_text(&new.home.code, &new.away.code, new.score)));
+                }
+                // A basket is no goal: basketball has no moments.
+                if crate::activities::basketball::is_basketball(&new.league) || !(old.status.is_live() || new.status.is_live()) {
                     continue;
                 }
                 for moment in moments(old, new) {
                     if let Moment::Goal(side) = moment {
                         self.fresh_goals.insert(new.id.clone(), (side, now));
+                        if !new.status.is_finished() {
+                            let minute = new.clock.map(|c| minute_text(&c, now)).unwrap_or_default();
+                            away_notes.push((format!("match:{}", new.id), away::goal_text(&new.home.code, &new.away.code, new.score, &minute)));
+                        }
                     }
                     let opponent = matches!(moment, Moment::Goal(side) | Moment::RedCard(side) if new.followed.is_some_and(|f| f != side));
                     if opponent && !s.match_opponent_moment {
@@ -2550,6 +2658,9 @@ impl App {
                     }
                     self.match_moments.insert(new.id.clone(), (moment, now));
                 }
+            }
+            for (key, text) in away_notes {
+                self.note_away(key, AwayKind::Match, text);
             }
             self.hidden_matches.retain(|id| matches.iter().any(|m| &m.id == id));
             self.matches = matches;
@@ -2620,6 +2731,7 @@ impl App {
         use crate::activities::api::ApiWhat;
         let calls = self.api_mailbox.lock().map(|mut m| std::mem::take(&mut *m)).unwrap_or_default();
         let (now, s) = (now_ms(), settings::current());
+        let before = self.live_states();
         for call in calls {
             // The name, the exe and the id; never the text.
             let what = match &call.what {
@@ -2629,6 +2741,7 @@ impl App {
             log(&format!("api: {} ({}) {what}", call.caller.app, call.caller.exe_file()));
             self.api.take(call, &mut self.live, &s.api_apps, s.enabled && s.api_enabled, now);
         }
+        self.note_live(&before);
         self.refresh()
     }
 
@@ -2722,6 +2835,7 @@ impl App {
     /// Commands from `nowbar.exe push` and the like.
     fn take_ipc(&mut self) -> Result<()> {
         let now = now_ms();
+        let before = self.live_states();
         for c in crate::platform::ipc::take() {
             match c {
                 // The API's ids are the apps' own.
@@ -2733,6 +2847,7 @@ impl App {
                 crate::platform::ipc::Command::Answer { .. } => {}
             }
         }
+        self.note_live(&before);
         self.refresh()
     }
 
@@ -3078,6 +3193,9 @@ impl App {
         if let Some(m) = power_moment(self.power, now, s.power_low_pct).filter(|_| s.power_moment) {
             log(&format!("power: {m:?} at {}%", now.map_or(0, |p| p.pct)));
             self.power_moment = Some((m, now_ms()));
+            if let (PowerMoment::Low, Some(p)) = (m, now) {
+                self.note_away("battery".into(), AwayKind::Battery, away::battery_text(p.pct));
+            }
         }
         self.power = now;
         self.refresh()
@@ -3292,18 +3410,15 @@ impl App {
         // Show the card window, start the morph and hide the real pill in this one turn,
         // so the compositor commits them in the same frame.
         self.ui.card_window.show();
-        match which {
-            OpenCard::Activity(_) | OpenCard::Brief | OpenCard::Wellbeing => {
-                let front = self.front.clone().unwrap_or(PillContent::Timer { text: String::new(), label: "", paused: false });
-                self.ui.morph.set_pill(&self.ui.pill.look(&front, &self.ui.pill_layout))?;
-                self.ui.morph.open(rel(pill), self.ui.pill_layout.radius as f32, rel(to), to_r)?;
-                self.ui.pill.set_opacity(0.0)?;
-            }
-            OpenCard::Picker => {
-                self.ui.morph.set_no_pill(card_accent(&content))?;
-                let from = RectPx { y: to.y + s.px(PICKER_SLIDE_DIP) as i32, ..to };
-                self.ui.morph.open(rel(from), to_r, rel(to), to_r)?;
-            }
+        if which.grows_from_pill() {
+            let front = self.front.clone().unwrap_or(PillContent::Timer { text: String::new(), label: "", paused: false });
+            self.ui.morph.set_pill(&self.ui.pill.look(&front, &self.ui.pill_layout))?;
+            self.ui.morph.open(rel(pill), self.ui.pill_layout.radius as f32, rel(to), to_r)?;
+            self.ui.pill.set_opacity(0.0)?;
+        } else {
+            self.ui.morph.set_no_pill(card_accent(&content))?;
+            let from = RectPx { y: to.y + s.px(PICKER_SLIDE_DIP) as i32, ..to };
+            self.ui.morph.open(rel(from), to_r, rel(to), to_r)?;
         }
         self.ui.card_window.set_hit(to, to_r as i32)?;
         self.card_screen = to;
@@ -3336,7 +3451,7 @@ impl App {
         self.ui.card_window.hide_hit();
         // Into the pill as it is now (after a resize the shape's start is the previous card).
         self.stop_brief_idle();
-        if let Some(OpenCard::Activity(_) | OpenCard::Brief | OpenCard::Wellbeing) = self.open {
+        if self.open.is_some_and(OpenCard::grows_from_pill) {
             let f = self.ui.card_window.frame;
             let pill = self.pill_screen();
             self.ui.morph.set_from(RectPx { x: pill.x - f.x, y: pill.y - f.y, ..pill }, self.ui.pill_layout.radius as f32)?;
@@ -3455,7 +3570,17 @@ impl App {
         match e {
             UiEvent::Timer(TIMER_TICK) => self.refresh(),
             // Back at the PC: a fresh forecast, and the day's brief if it's due.
+            UiEvent::Locked => {
+                self.away_log.lock(unix_now());
+                Ok(())
+            }
             UiEvent::Resume | UiEvent::Unlocked => {
+                // Woken at the lock screen is still away: only the unlock ends it.
+                if let Some(r) = matches!(e, UiEvent::Unlocked).then(|| self.away_log.unlock(unix_now())).flatten() {
+                    log(&format!("away: {} noted while locked", r.items.len()));
+                    self.away = Some(r);
+                    self.away_moment = Some(now_ms());
+                }
                 // Woken somewhere else, perhaps: where the PC is is looked for again too.
                 self.weather_worker.set_place(crate::activities::weather_worker::Place::of(&settings::current()));
                 // Asleep through a kickoff: the match workers ask again now, not at their old time.
@@ -3499,6 +3624,7 @@ impl App {
                     // The idle clock's card is the day's brief (the weather is in it).
                     (Some(ActivityKind::Clock), None) => self.toggle_card(OpenCard::Brief, true),
                     (Some(ActivityKind::Usage), None) => self.toggle_card(OpenCard::Wellbeing, true),
+                    (Some(ActivityKind::Away), None) => self.toggle_card(OpenCard::Away, true),
                     (Some(kind), None) => self.toggle_card(OpenCard::Activity(kind), true),
                     (None, _) => Ok(()),
                 }
@@ -3546,12 +3672,18 @@ impl App {
                 if let Some(r) = self.rain_watch.update(ahead) {
                     log(&format!("weather: {} in {} min", if r.snow { "snow" } else { "rain" }, r.minutes));
                     self.rain_moment = Some((r, now_ms()));
+                    if settings::current().rain_moment {
+                        self.note_away("rain".into(), AwayKind::Rain { snow: r.snow }, away::rain_text(r.snow).into());
+                    }
                 }
                 // Followed with the setting off too: turned on mid-spell, it doesn't warn late.
                 let new = self.weather.as_ref().map(|w| self.alert_watch.update(w, unix_now())).unwrap_or_default();
                 if settings::current().weather_alerts && crate::activities::weather_worker::place().is_some() {
+                    let offset = self.weather.as_ref().map_or_else(tz_offset_s, |w| w.utc_offset_s);
                     for a in new {
                         log(&format!("weather: alert {a:?}"));
+                        let head = alert_text(&a, unix_now(), offset).0.to_string();
+                        self.note_away(format!("alert:{:?}", a.kind), AwayKind::Alert(a.kind), head);
                         self.alerts.push_back(a);
                     }
                 }
@@ -3861,9 +3993,27 @@ mod tests {
             matches: (0..3).map(|_| BriefMatchRow { home: team(), away: team(), status: "20:00".into(), live: false }).collect(),
             music: Some(BriefMusic { title: "t".into(), artist: "a".into(), art: None, art_size: (0, 0), playing: true }),
             screen: Some(("Ekran süresi · 3 sa 40 dk".into(), "Bugün · VS Code 1 sa 50 dk".into())),
+            away: None,
         };
-        let (w, h) = card_size_dip(&CardContent::Brief(Box::new(full)));
+        let (w, h) = card_size_dip(&CardContent::Brief(Box::new(full.clone())));
         assert!(w <= CARD_FRAME_W_DIP && h <= CARD_FRAME_H_DIP, "a full brief is {w}×{h}");
+        // The away row takes the screen time's place.
+        let back = BriefCard { screen: None, away: Some(("Sen yokken · 4 şey".into(), "Claude bitti · now-bar".into())), ..full };
+        assert_eq!(card_size_dip(&CardContent::Brief(Box::new(back))).1, h);
+        let row = || AwayRow { kind: AwayKind::Timer, text: "Zamanlayıcı bitti".into(), time: "17:05".into(), crest: None };
+        let card = AwayCard { span: "14:02 – 17:14 · 3 sa 12 dk".into(), rows: (0..away::CARD_ROWS).map(|_| row()).collect(), more: 14 };
+        let (w, h) = card_size_dip(&CardContent::Away(Box::new(card)));
+        assert!(w <= CARD_FRAME_W_DIP && h <= CARD_FRAME_H_DIP, "a full away card is {w}×{h}");
+    }
+
+    #[test]
+    fn the_away_card_shows_six_rows_and_counts_the_rest() {
+        let items = (0..9).map(|i| AwayItem { key: format!("k{i}"), kind: AwayKind::Timer, text: format!("t{i}"), at_utc: 1_000 + i * 60 }).collect();
+        let r = AwayReport { since_utc: 0, until_utc: 3 * 3600 + 720, items };
+        let c = away_card(&r, 3 * 3600);
+        assert_eq!((c.rows.len(), c.more), (6, 3));
+        assert_eq!(c.span, "03:00 – 06:12 · 3 sa 12 dk", "in local time");
+        assert_eq!((c.rows[0].text.as_str(), c.rows[0].time.as_str()), ("t0", "03:16"));
     }
 
     use std::path::{Path, PathBuf};

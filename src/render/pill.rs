@@ -158,6 +158,8 @@ pub enum PillContent {
     Game { key: u32, store: Store, title: String, line: String, progress: Option<f32>, art: Option<Crest>, done: bool, paused: bool },
     /// An app past its daily limit (Dijital Denge): "Discord · 2 saati geçtin", for a moment.
     Usage { app: String, text: String },
+    /// Back from a lock: "Sen yokken · 4 şey", for a moment.
+    Away { count: String },
     /// A screenshot just saved: its wide preview and "1920×1080".
     Capture { thumb: Option<Crest>, size: String },
     /// Something another program sent: its title and "4:12" / "%40" / "İzin istiyor" / "Bitti".
@@ -281,6 +283,8 @@ impl PillContent {
             PillContent::WeatherAlert { .. } => 260.0,
             PillContent::Game { .. } => 260.0,
             PillContent::Usage { .. } => 260.0,
+            // "While you were away · 12 things" whole.
+            PillContent::Away { .. } => 240.0,
             PillContent::Shelf { min_width_dip, .. } => min_width_dip.max(200.0),
             PillContent::Live { claude: true, .. } | PillContent::App { .. } => 300.0,
             PillContent::Clock { .. } | PillContent::Weather { .. } | PillContent::Live { .. } => 220.0,
@@ -297,7 +301,7 @@ impl PillContent {
             PillContent::Buds(_) | PillContent::BudsMode(_) => BUDS_ACCENT,
             PillContent::Power { low: false, .. } => CHARGING_ACCENT,
             PillContent::Power { low: true, .. } => LOW_ACCENT,
-            PillContent::Capture { .. } => timer_accent(),
+            PillContent::Capture { .. } | PillContent::Away { .. } => timer_accent(),
             PillContent::Rain { snow: false, .. } => RAIN_ACCENT,
             PillContent::Rain { snow: true, .. } => SNOW_ACCENT,
             PillContent::WeatherAlert { kind, .. } => alert_style(*kind).0,
@@ -964,6 +968,7 @@ fn paint_layer(
         | PillContent::WeatherAlert { .. }
         | PillContent::Game { .. }
         | PillContent::Usage { .. }
+        | PillContent::Away { .. }
         | PillContent::Capture { .. }
         | PillContent::Live { .. }
         | PillContent::App { .. } => {
@@ -1013,6 +1018,7 @@ fn paint_timer(ink: &Ink, front: &PillContent, w: f32, h: f32, s: &Scale) -> Res
         | PillContent::WeatherAlert { .. }
         | PillContent::Game { .. }
         | PillContent::Usage { .. }
+        | PillContent::Away { .. }
         | PillContent::Capture { .. }
         | PillContent::Live { .. }
         | PillContent::App { .. } => {
@@ -1056,6 +1062,7 @@ pub fn paint_pill_content(ink: &Ink, c: &PillContent, w: f32, h: f32, s: &Scale)
         PillContent::WeatherAlert { kind, head, detail } => paint_alert(ink, *kind, head, detail, w, h, s),
         PillContent::Game { store, title, line, progress, art, done, paused, .. } => paint_game(ink, *store, (title, line), *progress, art.as_ref(), (*done, *paused), w, h, s),
         PillContent::Usage { app, text } => paint_usage(ink, app, text, w, h, s),
+        PillContent::Away { count } => paint_away(ink, c, count, w, h, s),
         PillContent::Capture { thumb, size } => paint_capture(ink, c, thumb.as_ref(), size, w, h, s),
         PillContent::Live { title, status, claude, state, action, .. } => paint_live(ink, c, (title, action), status, *claude, *state, w, h, s),
         PillContent::App { title, text, status, icon, ring, .. } => paint_app(ink, c, icon.as_ref(), (title, text), status, *ring, w, h, s),
@@ -1240,16 +1247,16 @@ fn paint_privacy(ink: &Ink, c: &PillContent, app: &str, (mic, cam): (bool, bool)
 
 /// Charging: iOS green; low battery: its red.
 const CHARGING_ACCENT: (u8, u8, u8) = (52, 199, 89);
-const LOW_ACCENT: (u8, u8, u8) = (255, 69, 58);
+pub const LOW_ACCENT: (u8, u8, u8) = (255, 69, 58);
 /// A rain blue a step darker than the headsets' own, and a grey-blue for snow.
-const RAIN_ACCENT: (u8, u8, u8) = (0x2F, 0x80, 0xD8);
-const SNOW_ACCENT: (u8, u8, u8) = (0x6F, 0x8C, 0xB3);
+pub const RAIN_ACCENT: (u8, u8, u8) = (0x2F, 0x80, 0xD8);
+pub const SNOW_ACCENT: (u8, u8, u8) = (0x6F, 0x8C, 0xB3);
 
 /// A cloud (three circles over a flat base, separate shapes so their overlaps don't cancel)
 /// with three slanted streaks, on a 24-unit button.
-const RAIN_ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.8" cy="10.8" r="3"/><circle cx="12.4" cy="8.9" r="3.9"/><circle cx="15.6" cy="11.2" r="2.6"/><rect x="8.8" y="10.8" width="6.8" height="3"/></g><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9.4 15.8L8.6 18.6M12.6 15.8L11.8 18.6M15.8 15.8L15 18.6"/></g></svg>"#;
+pub const RAIN_ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.8" cy="10.8" r="3"/><circle cx="12.4" cy="8.9" r="3.9"/><circle cx="15.6" cy="11.2" r="2.6"/><rect x="8.8" y="10.8" width="6.8" height="3"/></g><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9.4 15.8L8.6 18.6M12.6 15.8L11.8 18.6M15.8 15.8L15 18.6"/></g></svg>"#;
 /// The same cloud with three flakes.
-const SNOW_ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.8" cy="10.8" r="3"/><circle cx="12.4" cy="8.9" r="3.9"/><circle cx="15.6" cy="11.2" r="2.6"/><rect x="8.8" y="10.8" width="6.8" height="3"/><circle cx="9" cy="17.1" r="1.05"/><circle cx="12.2" cy="17.1" r="1.05"/><circle cx="15.4" cy="17.1" r="1.05"/></g></svg>"#;
+pub const SNOW_ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="8.8" cy="10.8" r="3"/><circle cx="12.4" cy="8.9" r="3.9"/><circle cx="15.6" cy="11.2" r="2.6"/><rect x="8.8" y="10.8" width="6.8" height="3"/><circle cx="9" cy="17.1" r="1.05"/><circle cx="12.2" cy="17.1" r="1.05"/><circle cx="15.4" cy="17.1" r="1.05"/></g></svg>"#;
 
 /// Claude's own orange.
 pub const CLAUDE_ACCENT: (u8, u8, u8) = (0xD9, 0x77, 0x57);
@@ -1458,6 +1465,23 @@ fn paint_usage(ink: &Ink, app: &str, text: &str, w: f32, h: f32, s: &Scale) -> R
     let app_w = ink.measure(app, &head)?.min(room - tail_w);
     ink.text(app, rect(x, 0.0, app_w + d(2.0), h), &head)?;
     ink.text(&tail, rect(x + app_w, 0.0, (room - app_w).max(0.0), h), &rest)
+}
+
+/// The clock turning back in the accent circle, then "Sen yokken · 4 şey" in the media pill's type.
+fn paint_away(ink: &Ink, c: &PillContent, count: &str, w: f32, h: f32, s: &Scale) -> Result<()> {
+    let d = |v: f32| v * s.0;
+    let (r, g, b) = c.accent();
+    let circle = d(24.0);
+    let dot = rect(d(4.0), ((h - circle) / 2.0).round(), circle, circle);
+    ink.rrect(dot, circle / 2.0, rgba(r, g, b, 1.0))?;
+    ink.text(&glyph(Icon::History).to_string(), dot, &TextStyle::new(Face::Icons, Weight::Regular, d(13.0), white(1.0)).centered())?;
+    let title = TextStyle::new(Face::Text, Weight::SemiBold, d(12.5), white(1.0));
+    let head = tr("Sen yokken");
+    let head_w = ink.measure(head, &title)?;
+    ink.text(head, rect(d(36.0), 0.0, head_w + d(2.0), h), &title)?;
+    let x = d(36.0) + head_w;
+    let rest = TextStyle::new(Face::Text, Weight::Regular, d(12.5), white(0.7)).ellipsis();
+    ink.text(&format!(" · {count}"), rect(x, 0.0, (w - x - d(14.0)).max(0.0), h), &rest)
 }
 
 /// Steam's blue, a step deeper so white reads on it; Epic's own is black and white: a light grey.
