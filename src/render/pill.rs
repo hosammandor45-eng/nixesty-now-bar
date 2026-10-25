@@ -114,6 +114,9 @@ pub fn waveform_levels(peak: (f32, f32), t_ms: u64, prev: [f32; 3]) -> [f32; 3] 
 
 /// Marquee: 30 DIP/s, 1.5 s pause at each end, 14 DIP fade at the right edge.
 const MARQUEE_PAUSE_S: f32 = 1.5;
+/// A new title (a lyric line) comes up this far, this fast.
+const TITLE_RISE_DIP: f32 = 10.0;
+const TITLE_RISE_MS: f32 = 280.0;
 const MARQUEE_FADE_DIP: f32 = 14.0;
 
 /// One UI 9 pill material inside the taskbar: #121212 at 92 % (the opacity is a setting).
@@ -716,9 +719,15 @@ impl PillVisual {
             (PillContent::Match(now), _) => now.moment.is_some(),
             _ => false,
         };
+        // The same player's title changing in place (a lyric line, the next track): it comes up.
+        let line_moved = !fade
+            && matches!((front, self.painted.as_ref().map(|(f, _)| f)), (PillContent::Media(now), Some(PillContent::Media(was))) if now.id == was.id && now.title != was.title);
         let target = if fade { 1 - self.active } else { self.active };
         self.buttons = paint_layer(g, &self.c, &self.props, &mut self.layers[target], front, s, l)?;
         self.painted = Some((front.clone(), l));
+        if line_moved {
+            self.slide_title(s)?;
+        }
         let title = match front {
             PillContent::Media(m) => Some(m.title.clone()),
             _ => None,
@@ -808,6 +817,23 @@ impl PillVisual {
         anim.InsertKeyFrame(1.0, Vector2 { X: x0, Y: 0.0 })?;
         anim.SetDuration(TimeSpan { Duration: (total as f64 * 1e7) as i64 })?;
         layer.marquee_brush.StartAnimation(h!("Offset"), &anim)
+    }
+
+    /// The media title comes up from under its line and fades in (a new lyric line, a new track).
+    fn slide_title(&self, s: &Scale) -> Result<()> {
+        let marquee = &self.layers[self.active].marquee;
+        let to = marquee.Offset()?;
+        let ease = self.c.CreateCubicBezierEasingFunction(Vector2 { X: 0.2, Y: 0.0 }, Vector2 { X: 0.0, Y: 1.0 })?;
+        let rise = self.c.CreateVector3KeyFrameAnimation()?;
+        rise.InsertKeyFrame(0.0, windows_numerics::Vector3 { Y: to.Y + s.px(TITLE_RISE_DIP), ..to })?;
+        rise.InsertKeyFrameWithEasingFunction(1.0, to, &ease)?;
+        rise.SetDuration(TimeSpan { Duration: scaled_ticks(TITLE_RISE_MS) })?;
+        marquee.StartAnimation(h!("Offset"), &rise)?;
+        let show = self.c.CreateScalarKeyFrameAnimation()?;
+        show.InsertKeyFrame(0.0, 0.0)?;
+        show.InsertKeyFrameWithEasingFunction(1.0, 1.0, &ease)?;
+        show.SetDuration(TimeSpan { Duration: scaled_ticks(TITLE_RISE_MS) })?;
+        marquee.StartAnimation(h!("Opacity"), &show)
     }
 
     /// One quick swell and back (One UI's goal "pop"), about the pill's centre.
@@ -1780,6 +1806,10 @@ fn paint_marquee(g: &Gfx, c: &Compositor, layer: &mut Layer, m: &MediaSnapshot, 
     })?;
     let x = d(media_text_x_dip()).round();
     let visible = (w - d(media_text_right_dip()) - x).max(1.0);
+    // A rise still under way would end where the last line stood.
+    layer.marquee.StopAnimation(h!("Offset"))?;
+    layer.marquee.StopAnimation(h!("Opacity"))?;
+    layer.marquee.SetOpacity(1.0)?;
     layer.marquee.SetOffset(windows_numerics::Vector3 { X: x, Y: 0.0, Z: 0.0 })?;
     layer.marquee.SetSize(Vector2 { X: visible, Y: h })?;
     layer.marquee_brush.StopAnimation(h!("Offset"))?;

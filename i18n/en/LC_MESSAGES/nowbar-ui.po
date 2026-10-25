@@ -3245,3 +3245,19 @@ msgstr "Couldn't zip"
 #: src/app.rs
 msgid "Zip için çok büyük"
 msgstr "Too big for a zip"
+
+#: src/settings_ui.rs
+msgid "Pilde şarkı sözü"
+msgstr "Lyrics in the pill"
+
+#: src/settings_ui.rs
+msgid "Eşzamanlı söz varken pilde şarkının adı yerine o anki satır kayar"
+msgstr "With synced lyrics, the line on slides into the pill in place of the song's title"
+
+#: ui/pages.slint
+msgid "Şarkı sözü"
+msgstr "Lyrics"
+
+#: ui/pages.slint
+msgid "Adın yerine o anki satır"
+msgstr "The line on, in the title's place"

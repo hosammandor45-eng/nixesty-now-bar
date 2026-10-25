@@ -52,6 +52,7 @@ pub const INDEX: &[Entry] = &[
     e(2, "media-on", n_("Medya"), n_("Medyayı göster"), n_("Çalan şarkı pilde; tıklayınca medya kartı"), "müzik şarkı spotify youtube"),
     e(2, "pill-buttons", n_("Pil"), n_("Pil düğmeleri"), n_("Başlık, düğmelere kadar uzar"), "önceki sonraki oynat düğme"),
     e(2, "pill-artist", n_("Pil"), n_("Sanatçıyı göster"), n_("Başlığın yanında, soluk"), "sanatçı"),
+    e(2, "pill-lyrics", n_("Pil"), n_("Pilde şarkı sözü"), n_("Eşzamanlı söz varken pilde şarkının adı yerine o anki satır kayar"), "söz sözler şarkı sözü lyrics karaoke satır pil"),
     e(2, "media-waveform", n_("Pil"), n_("Ses dalgası"), n_("Kapakla başlık arasındaki çubuklar sesle birlikte oynar"), "dalga dalgası çubuk ses seviye ekolayzır equalizer"),
     e(2, "card-wave", n_("Kart"), n_("Dalgalı ilerleme çubuğu"), n_("Çalarken dalgalanır; kapalıyken düz çizgi"), "dalga ilerleme çubuk"),
     e(2, "media-lyrics", n_("Kart"), n_("Şarkı sözleri"), n_("Kartta «Sözler» çipi; eşzamanlı sözler lrclib.net'ten gelir"), "söz sözler şarkı sözü lyrics lrclib karaoke"),

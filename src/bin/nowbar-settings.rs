@@ -450,6 +450,7 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_pill_artist(s.media_pill_artist);
     st.set_media_waveform(s.media_waveform);
     st.set_media_lyrics(s.media_lyrics);
+    st.set_pill_lyrics(s.media_pill_lyrics);
     st.set_card_wave(s.media_card_wave);
     st.set_middle_click(s.media_middle_click);
     st.set_paused_keep(index_of(&KEEP_MIN, &s.media_paused_keep_min, 2));
@@ -562,6 +563,7 @@ fn read(ui: &SettingsWindow, base: &Settings) -> Settings {
         media_pill_artist: st.get_pill_artist(),
         media_waveform: st.get_media_waveform(),
         media_lyrics: st.get_media_lyrics(),
+        media_pill_lyrics: st.get_pill_lyrics(),
         media_card_wave: st.get_card_wave(),
         media_middle_click: st.get_middle_click(),
         media_paused_keep_min: pick(&KEEP_MIN, st.get_paused_keep(), 10),

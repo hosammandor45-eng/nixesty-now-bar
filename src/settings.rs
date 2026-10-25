@@ -168,6 +168,8 @@ pub struct Settings {
     pub media_card_wave: bool,
     /// Synced lyrics on the media card (from lrclib.net).
     pub media_lyrics: bool,
+    /// ...and the line on in the pill, in the title's place.
+    pub media_pill_lyrics: bool,
     /// Bars in the media pill that move with the sound.
     pub media_waveform: bool,
     pub output_hidden_devices: Vec<String>,
@@ -312,6 +314,7 @@ impl Default for Settings {
             media_pill_artist: true,
             media_card_wave: true,
             media_lyrics: true,
+            media_pill_lyrics: true,
             media_waveform: true,
             output_hidden_devices: Vec::new(),
             timer_sound: "Alarm01".into(),
@@ -732,6 +735,12 @@ mod tests {
         assert!(old.wellbeing_on && old.wellbeing_in_brief && old.wellbeing_limit_moments && old.wellbeing_limits.is_empty());
         let s = parse(r#"{"wellbeing_limits": [{"exe": "Discord.exe", "minutes": 120}, {"exe": "x.exe", "minutes": 0}, {"exe": "y.exe", "minutes": 99999}]}"#);
         assert_eq!(s.wellbeing_limits, vec![AppLimit { exe: "Discord.exe".into(), minutes: 120 }, AppLimit { exe: "y.exe".into(), minutes: 1440 }]);
+    }
+
+    #[test]
+    fn lyrics_show_in_the_pill_by_default() {
+        let old: Settings = serde_json::from_str(r#"{"enabled": true}"#).unwrap();
+        assert!(old.media_pill_lyrics, "an older file: the line on in place of the title");
     }
 
     #[test]

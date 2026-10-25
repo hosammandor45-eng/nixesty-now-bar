@@ -48,6 +48,15 @@ pub fn line_at(lines: &Lines, pos_ms: u64) -> Option<usize> {
     lines.iter().rposition(|(ms, _)| *ms <= pos_ms)
 }
 
+/// What the pill shows at `pos_ms`: the line on, when it has words (between lines and before the
+/// first, the title), and the ms until the next line starts (`None` after the last).
+pub fn pill_line(lines: &Lines, pos_ms: u64) -> (Option<&str>, Option<u64>) {
+    let on = line_at(lines, pos_ms);
+    let words = on.map(|i| lines[i].1.trim()).filter(|l| !l.is_empty());
+    let next = lines.get(on.map_or(0, |i| i + 1)).map(|(ms, _)| ms.saturating_sub(pos_ms));
+    (words, next)
+}
+
 /// lrclib.net's exact-match request for a track (duration in whole seconds).
 pub fn query_url(artist: &str, title: &str, album: &str, duration_s: u64) -> String {
     format!(
@@ -303,6 +312,16 @@ mod tests {
         assert_eq!(line_at(&lines, 10_000), Some(0));
         assert_eq!(line_at(&lines, 29_999), Some(1));
         assert_eq!(line_at(&lines, 99_000), Some(2));
+    }
+
+    #[test]
+    fn the_pill_shows_a_line_with_words_and_wakes_for_the_next() {
+        let lines = parse_lrc("[00:01.00]Gece yarısı\n[00:03.00]\n[00:05.00]  Tren geçti  ");
+        assert_eq!(pill_line(&lines, 500), (None, Some(500)), "before the first: the title");
+        assert_eq!(pill_line(&lines, 1_000), (Some("Gece yarısı"), Some(2_000)));
+        assert_eq!(pill_line(&lines, 3_500), (None, Some(1_500)), "an empty line is a gap: the title");
+        assert_eq!(pill_line(&lines, 6_000), (Some("Tren geçti"), None), "the last stays");
+        assert_eq!(pill_line(&Lines::new(), 6_000), (None, None));
     }
 
     #[test]

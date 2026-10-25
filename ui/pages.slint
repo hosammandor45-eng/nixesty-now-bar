@@ -650,6 +650,16 @@ export component MediaInspector inherits VerticalLayout {
                 toggled => { Ui.changed(); }
             }
         }
+        // The pill's lines come with the card's: dimmed while those are off.
+        IRow {
+            opacity: Store.media-lyrics ? 1 : 0.4;
+            label: @tr("Şarkı sözü");
+            note: @tr("Adın yerine o anki satır");
+            Toggle {
+                checked <=> Store.pill-lyrics;
+                toggled => { Ui.changed(); }
+            }
+        }
         IRow {
             label: @tr("Ses dalgası");
             note: @tr("Kapağın yanında, sesle oynar");

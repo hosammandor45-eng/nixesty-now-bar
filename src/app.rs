@@ -35,7 +35,7 @@ use crate::activities::football_worker::FootballWorker;
 use crate::activities::basketball_worker::BasketballWorker;
 use crate::activities::media::{seek_position, MediaCommand, MediaSnapshot, SeekHold};
 use crate::activities::media_worker::{filetime_now, MediaWorker};
-use crate::activities::lyrics::{line_at, Lines};
+use crate::activities::lyrics::{self, line_at, Lines};
 use crate::activities::lyrics_worker::{LyricsMailbox, LyricsWorker, Track};
 use crate::activities::power::{power_moment, PowerMoment, POWER_MOMENT_MS};
 use crate::activities::{add_idle, buds_front_ms, has_card, media_paused_keep_ms, settings_page_for, stack_order, BUDS_MODE_MOMENT_MS, ActivityKind, Presence, PresenceState, ALERT_MOMENT_MS, GAME_MOMENT_MS, RAIN_MOMENT_MS, USAGE_MOMENT_MS, VOLUME_MOMENT_MS};
@@ -1599,7 +1599,15 @@ impl App {
                 text: format_elapsed(slot.w.elapsed_ms(now)),
                 paused: slot.w.state() == RunState::Paused,
             }),
-            ActivityKind::Media(id) => self.media_of(id).cloned().map(|m| PillContent::media(styled(m))),
+            // With synced lines, the one on takes the title's place (between lines, the title).
+            ActivityKind::Media(id) => self.media_of(id).map(|m| {
+                let mut shown = styled(m.clone());
+                if let Some((Some(line), _)) = self.pill_lyric(m) {
+                    shown.title = line;
+                    shown.artist = String::new();
+                }
+                PillContent::media(shown)
+            }),
             ActivityKind::Buds => match self.buds_mode_moment.filter(|(_, at)| now.saturating_sub(*at) < BUDS_MODE_MOMENT_MS) {
                 Some((mode, _)) => Some(PillContent::BudsMode(mode)),
                 None => self.buds.map(|(b, _)| PillContent::Buds(shown_buds(b))),
@@ -2445,6 +2453,12 @@ impl App {
                 if view.progress < 1.0 && self.media_of(id).is_some_and(|m| m.playing) {
                     sooner(16);
                 }
+            }
+        }
+        // The pill's lyric line changes when the next one starts.
+        if let Some(ActivityKind::Media(id)) = self.front_kind() {
+            if let Some(next) = self.media_of(id).and_then(|m| self.pill_lyric(m)).and_then(|(_, next)| next) {
+                sooner(next + 5);
             }
         }
         // The idle clock turns over at the next minute.
@@ -3388,6 +3402,22 @@ impl App {
             }
         }
         self.refresh()
+    }
+
+    /// The pill's lyric line for a playing `m` (`None` inside: between lines) and the ms until the
+    /// next starts; `None` without synced lines or with the setting off.
+    fn pill_lyric(&self, m: &MediaSnapshot) -> Option<(Option<String>, Option<u64>)> {
+        let s = settings::current();
+        if !(s.media_lyrics && s.media_pill_lyrics && m.playing) {
+            return None;
+        }
+        let lines = self.lyrics.get(&track_of(m)?.key())?.as_ref()?;
+        let hold = self.seek_hold.filter(|(held, _)| *held == m.id).map(|(_, h)| h);
+        let card = MediaCard::new(m.clone(), filetime_now(), None, None, (0, 0), hold);
+        let t = card.m.timeline?;
+        let pos_ms = (card.position? - t.start).max(0) as u64 / 10_000;
+        let (line, next) = lyrics::pill_line(lines, pos_ms);
+        Some((line.map(str::to_string), next))
     }
 
     /// The lines around the card's position, when its track has synced lyrics.

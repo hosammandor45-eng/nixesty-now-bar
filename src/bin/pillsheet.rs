@@ -11,7 +11,28 @@ use nowbar::activities::shelf::FileKind;
 use nowbar::activities::weather::{describe, symbol, WeatherFx};
 use nowbar::activities::weather_alert::AlertKind;
 use nowbar::activities::games::Store;
-use nowbar::render::pill::{paint_pill_content, PillContent, PillThumb};
+use nowbar::render::pill::{paint_media_still, paint_pill_content, PillContent, PillThumb};
+use nowbar::activities::media::{Caps, MediaSnapshot};
+
+/// A playing song (made up); `line`: the lyric on, in the title's place, as the app shows it.
+fn song(line: Option<&str>) -> PillContent {
+    PillContent::media(MediaSnapshot {
+        id: 1,
+        app_id: "Spotify.exe".into(),
+        app_name: "Spotify".into(),
+        title: line.unwrap_or("Gece Yarısı Treni").into(),
+        artist: if line.is_some() { String::new() } else { "Deniz Kaya".into() },
+        playing: true,
+        timeline: None,
+        can: Caps { play_pause: true, prev: true, next: true, seek: true, shuffle: false, repeat: false },
+        shuffle: None,
+        repeat: None,
+        art: None,
+        art_size: (0, 0),
+        accent: [0x1D, 0xB9, 0x54],
+        changed_ms: 0,
+    })
+}
 use windows::core::{Interface, Result, HSTRING};
 use windows::Win32::Foundation::GENERIC_WRITE;
 use windows::Win32::Graphics::Direct2D::Common::{D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_COLOR_F, D2D1_PIXEL_FORMAT};
@@ -75,6 +96,9 @@ fn main() -> Result<()> {
     unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok()? };
     let s = Scale(1.25);
     let pills: Vec<(&str, PillContent)> = vec![
+        ("Medya", song(None)),
+        ("Medya · söz", song(Some("Gece yarısı geçen trende"))),
+        ("Medya · uzun söz", song(Some("Bir sabah uyandım ki sen yoksun, şehir de yok, ben de yokum"))),
         ("Ses %45", PillContent::Volume { pct: 45, muted: false }),
         ("Ses %100", PillContent::Volume { pct: 100, muted: false }),
         ("Sessiz", PillContent::Volume { pct: 30, muted: true }),
@@ -178,7 +202,11 @@ fn main() -> Result<()> {
             let mut saved = windows_numerics::Matrix3x2::default();
             dc.GetTransform(&mut saved);
             dc.SetTransform(&windows_numerics::Matrix3x2 { M31: x, M32: py, ..saved });
-            paint_pill_content(&ink, content, pw, pill_h, &s)?;
+            match content {
+                // The title and the waveform, which the pill draws in visuals of their own.
+                PillContent::Media(m) => paint_media_still(&ink, m, [0.55, 0.9, 0.7], pw, pill_h, &s)?,
+                _ => paint_pill_content(&ink, content, pw, pill_h, &s)?,
+            }
             dc.SetTransform(&saved);
             // Compact: the same paint cut at a circle as wide as the pill is tall.
             let cx = pad + 720.0 - 12.0 - pill_h;
