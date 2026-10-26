@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use windows::core::w;
 use windows::Win32::Foundation::HWND;
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED};
 use windows::Win32::UI::Accessibility::{
     CUIAutomation, IUIAutomation, IUIAutomationRangeValuePattern, TreeScope_Descendants, UIA_ControlTypePropertyId, UIA_ProgressBarControlTypeId, UIA_RangeValuePatternId,
     UIA_TextControlTypeId,
@@ -105,14 +105,19 @@ pub fn finished(pct: u8, left_s: Option<u64>) -> bool {
     pct >= 90 || left_s.is_some_and(|s| s <= 3)
 }
 
-pub fn start(mailbox: TransferMailbox, post: fn()) {
-    let spawned = std::thread::Builder::new().name("transfers".into()).spawn(move || {
-        let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+pub fn start(mailbox: TransferMailbox, post: fn()) -> std::io::Result<super::engine::ManagedProvider> {
+    super::engine::ManagedProvider::spawn("transfers", true, move |context| {
+        // Balance COM only after successful initialization, on this same thread.
+        let initialized = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_ok();
+        struct Apartment(bool);
+        impl Drop for Apartment {
+            fn drop(&mut self) { if self.0 { unsafe { CoUninitialize() }; } }
+        }
+        let _apartment = Apartment(initialized);
         let uia: Option<IUIAutomation> = unsafe { CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) }.ok();
         let started = Instant::now();
         let (mut pace, mut last, mut kind_of): (Pace, Option<TransferNow>, Option<(isize, TransferKind)>) = (Pace::default(), None, None);
-        loop {
-            std::thread::sleep(LOOK_EVERY);
+        while context.wait(LOOK_EVERY) {
             let on = crate::settings::current().enabled && crate::settings::current().transfer_on;
             let seen = on.then(dialog).flatten();
             let read = seen.and_then(|hwnd| {
@@ -134,20 +139,20 @@ pub fn start(mailbox: TransferMailbox, post: fn()) {
                 pace = Pace::default();
                 kind_of = None;
             }
+            if !on { context.suspend(); }
             if now == last && gone.is_none() {
                 continue;
             }
             last = now;
-            if let Ok(mut m) = mailbox.lock() {
+            {
+                let mut m = mailbox.lock().map_err(|_| "transfer mailbox poisoned".to_string())?;
                 m.now = now;
                 m.finished.extend(gone);
             }
             post();
         }
-    });
-    if let Err(e) = spawned {
-        log(&format!("transfers: no thread ({e})"));
-    }
+        Ok(())
+    })
 }
 
 #[cfg(test)]

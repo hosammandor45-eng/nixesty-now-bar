@@ -635,6 +635,7 @@ struct OutputUi {
 }
 
 pub struct App {
+    providers: crate::activities::engine::ProviderRegistry,
     compositor: Compositor,
     gfx: Gfx,
     ui: Ui,
@@ -863,11 +864,18 @@ impl App {
         let headset_mailbox: HeadsetMailbox = Default::default();
         bt_battery::watch(headset_mailbox.clone());
         let wellbeing_box: WellbeingMailbox = Default::default();
-        crate::activities::wellbeing_worker::start(wellbeing_box.clone(), crate::platform::windows::post_wellbeing);
+        let mut providers = crate::activities::engine::ProviderRegistry::default();
+        match crate::activities::wellbeing_worker::start(wellbeing_box.clone(), crate::platform::windows::post_wellbeing) {
+            Ok(worker) => { let _ = providers.register(worker); }
+            Err(e) => log(&format!("wellbeing: no thread ({e})")),
+        }
         let game_box: GamesMailbox = Default::default();
         crate::activities::games_worker::start(game_box.clone(), crate::platform::windows::post_games);
         let transfer_box: TransferMailbox = Default::default();
-        crate::activities::transfer_worker::start(transfer_box.clone(), crate::platform::windows::post_transfer);
+        match crate::activities::transfer_worker::start(transfer_box.clone(), crate::platform::windows::post_transfer) {
+            Ok(worker) => { let _ = providers.register(worker); }
+            Err(e) => log(&format!("transfers: no thread ({e})")),
+        }
         let weather_mailbox: WeatherMailbox = Default::default();
         let capture_mailbox: CaptureMailbox = Default::default();
         // The pill's preview: 36×24 DIP at the pill's scale.
@@ -999,6 +1007,7 @@ impl App {
             headset_mailbox,
             games: Vec::new(),
             game_moments: HashMap::new(),
+            providers,
             game_box,
             covers: Default::default(),
             wellbeing: WellbeingBox::default(),
@@ -2295,6 +2304,9 @@ impl App {
 
     /// Recomputes the stack and redraws the pill and any open card; schedules the next tick.
     fn refresh(&mut self) -> Result<()> {
+        for (name, error) in self.providers.pending_errors() {
+            log(&format!("provider {name}: {error}"));
+        }
         let now = now_ms();
         self.follow_taskbar_items();
         for id in self.live.waiting_asks() {
@@ -3187,6 +3199,14 @@ impl App {
         };
         settings::install(new.clone());
         log("settings reloaded");
+        // The transfer worker performs one final clearing pass when disabled, then sleeps
+        // without polling until enabled. Wellbeing retains its original independent switch.
+        if new.wellbeing_on != old.wellbeing_on {
+            self.providers.set_enabled("wellbeing", new.wellbeing_on);
+        }
+        if new.enabled != old.enabled || new.transfer_on != old.transfer_on {
+            self.providers.set_enabled("transfers", true);
+        }
         if new.autostart != autostart_enabled() {
             if let Err(e) = set_autostart(new.autostart) {
                 log(&format!("autostart: {e:?}"));
@@ -4512,6 +4532,7 @@ impl App {
 
 impl Drop for App {
     fn drop(&mut self) {
+        self.providers.stop_all();
         remove_tray(self.main.hwnd);
         self.save_music();
     }

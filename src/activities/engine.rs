@@ -52,6 +52,206 @@ pub trait ActivityProvider {
     fn stop(&mut self);
 }
 
+/// Commands wake a provider without a timer firing while it is suspended.
+enum WorkerCommand {
+    Enable(bool),
+    Stop,
+}
+
+#[derive(Default)]
+struct WorkerStatus {
+    state: Option<ProviderState>,
+    error: Option<String>,
+    reported: bool,
+}
+
+/// Owned by the worker thread; waiting is interruptible even for long intervals.
+pub struct WorkerContext {
+    rx: std::sync::mpsc::Receiver<WorkerCommand>,
+    status: std::sync::Arc<std::sync::Mutex<WorkerStatus>>,
+    enabled: bool,
+}
+
+impl WorkerContext {
+    pub fn suspend(&mut self) {
+        self.enabled = false;
+        self.status.lock().unwrap_or_else(|e| e.into_inner()).state =
+            Some(ProviderState::Suspended);
+    }
+
+    /// True when a poll is due. Suspension blocks on commands, consuming no polling CPU.
+    pub fn wait(&mut self, interval: std::time::Duration) -> bool {
+        use std::sync::mpsc::RecvTimeoutError;
+        loop {
+            let command = if self.enabled {
+                match self.rx.recv_timeout(interval) {
+                    Ok(c) => c,
+                    Err(RecvTimeoutError::Timeout) => return true,
+                    Err(RecvTimeoutError::Disconnected) => return false,
+                }
+            } else {
+                match self.rx.recv() {
+                    Ok(c) => c,
+                    Err(_) => return false,
+                }
+            };
+            match command {
+                WorkerCommand::Stop => return false,
+                WorkerCommand::Enable(enabled) => {
+                    self.enabled = enabled;
+                    self.status.lock().unwrap_or_else(|e| e.into_inner()).state =
+                        Some(if enabled {
+                            ProviderState::Running
+                        } else {
+                            ProviderState::Suspended
+                        });
+                }
+            }
+        }
+    }
+}
+
+/// A cooperative worker. Drop requests shutdown without blocking the UI thread.
+/// Thread-owned resources are released when the current bounded OS call finishes.
+pub struct ManagedProvider {
+    name: &'static str,
+    tx: std::sync::mpsc::Sender<WorkerCommand>,
+    status: std::sync::Arc<std::sync::Mutex<WorkerStatus>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl ManagedProvider {
+    pub fn spawn(
+        name: &'static str,
+        enabled: bool,
+        run: impl FnOnce(&mut WorkerContext) -> Result<(), String> + Send + 'static,
+    ) -> std::io::Result<Self> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let status = std::sync::Arc::new(std::sync::Mutex::new(WorkerStatus {
+            state: Some(ProviderState::Starting),
+            error: None,
+            reported: false,
+        }));
+        let shared = status.clone();
+        let thread = std::thread::Builder::new()
+            .name(name.into())
+            .spawn(move || {
+                let mut context = WorkerContext {
+                    rx,
+                    status: shared.clone(),
+                    enabled,
+                };
+                shared.lock().unwrap_or_else(|e| e.into_inner()).state = Some(if enabled {
+                    ProviderState::Running
+                } else {
+                    ProviderState::Suspended
+                });
+                let result =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&mut context)));
+                let mut status = shared.lock().unwrap_or_else(|e| e.into_inner());
+                match result {
+                    Ok(Ok(())) => status.state = Some(ProviderState::Stopped),
+                    Ok(Err(error)) => {
+                        status.state = Some(ProviderState::Failed);
+                        status.error = Some(error);
+                    }
+                    Err(_) => {
+                        status.state = Some(ProviderState::Failed);
+                        status.error = Some("provider panicked".into());
+                    }
+                }
+            })?;
+        Ok(Self {
+            name,
+            tx,
+            status,
+            thread: Some(thread),
+        })
+    }
+
+    pub fn state(&self) -> ProviderState {
+        self.status
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .state
+            .unwrap_or(ProviderState::Stopped)
+    }
+
+    pub fn error(&self) -> Option<String> {
+        self.status
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .error
+            .clone()
+    }
+
+    pub fn set_enabled(&self, enabled: bool) {
+        let _ = self.tx.send(WorkerCommand::Enable(enabled));
+    }
+
+    pub fn request_stop(&self) {
+        let _ = self.tx.send(WorkerCommand::Stop);
+    }
+
+    /// Only use off the UI thread: waits for resource cleanup to finish.
+    pub fn shutdown(mut self) {
+        self.request_stop();
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+impl Drop for ManagedProvider {
+    fn drop(&mut self) {
+        self.request_stop();
+    }
+}
+
+/// Registration owns provider lifetimes. A failed provider remains inspectable; it is not
+/// blindly restarted, avoiding crash loops and repeated OS permission requests.
+#[derive(Default)]
+pub struct ProviderRegistry {
+    providers: std::collections::BTreeMap<&'static str, ManagedProvider>,
+}
+
+impl ProviderRegistry {
+    pub fn register(&mut self, provider: ManagedProvider) -> Result<(), &'static str> {
+        if self.providers.contains_key(provider.name) {
+            return Err("duplicate provider");
+        }
+        self.providers.insert(provider.name, provider);
+        Ok(())
+    }
+    pub fn set_enabled(&self, name: &str, enabled: bool) {
+        if let Some(provider) = self.providers.get(name) {
+            provider.set_enabled(enabled);
+        }
+    }
+    pub fn get(&self, name: &str) -> Option<&ManagedProvider> {
+        self.providers.get(name)
+    }
+    pub fn pending_errors(&self) -> Vec<(&'static str, String)> {
+        self.providers
+            .iter()
+            .filter_map(|(name, provider)| {
+                let mut status = provider.status.lock().unwrap_or_else(|e| e.into_inner());
+                if status.reported {
+                    return None;
+                }
+                let error = status.error.clone()?;
+                status.reported = true;
+                Some((*name, error))
+            })
+            .collect()
+    }
+    pub fn stop_all(&self) {
+        for provider in self.providers.values() {
+            provider.request_stop();
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct RankedActivity<K> {
     pub key: K,
@@ -180,5 +380,95 @@ mod regression_tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod provider_tests {
+    use super::*;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        mpsc, Arc,
+    };
+    use std::time::Duration;
+    const LIMIT: Duration = Duration::from_secs(5);
+
+    #[test]
+    fn suspended_provider_does_not_poll_and_resume_restarts_sampling() {
+        let (ready, ready_rx) = mpsc::channel();
+        let (tick, tick_rx) = mpsc::channel();
+        let provider = ManagedProvider::spawn("test", false, move |context| {
+            ready.send(()).unwrap();
+            while context.wait(Duration::from_millis(10)) {
+                context.suspend();
+                tick.send(()).unwrap();
+            }
+            Ok(())
+        })
+        .unwrap();
+        ready_rx.recv_timeout(LIMIT).unwrap();
+        assert_eq!(provider.state(), ProviderState::Suspended);
+        assert!(tick_rx.try_recv().is_err());
+        provider.set_enabled(true);
+        tick_rx.recv_timeout(LIMIT).unwrap();
+        // A second explicit resume produces one poll, not a polling loop.
+        provider.set_enabled(true);
+        tick_rx.recv_timeout(LIMIT).unwrap();
+        provider.shutdown();
+        assert!(tick_rx.try_recv().is_err());
+    }
+
+    struct Cleanup(Arc<AtomicUsize>);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn failure_releases_resources_and_is_observable() {
+        let cleaned = Arc::new(AtomicUsize::new(0));
+        let guard = Cleanup(cleaned.clone());
+        let mut provider = ManagedProvider::spawn("failure", true, move |_| {
+            let _guard = guard;
+            Err("device unavailable".into())
+        })
+        .unwrap();
+        provider.thread.take().unwrap().join().unwrap();
+        assert_eq!(provider.state(), ProviderState::Failed);
+        assert_eq!(provider.error().as_deref(), Some("device unavailable"));
+        assert_eq!(cleaned.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn panic_is_contained_and_cleanup_runs() {
+        let cleaned = Arc::new(AtomicUsize::new(0));
+        let guard = Cleanup(cleaned.clone());
+        let mut provider = ManagedProvider::spawn("panic", true, move |_| {
+            let _guard = guard;
+            panic!("test provider failure");
+        })
+        .unwrap();
+        provider.thread.take().unwrap().join().unwrap();
+        assert_eq!(provider.state(), ProviderState::Failed);
+        assert_eq!(cleaned.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn registry_rejects_duplicate_ids_and_stop_interrupts_long_waits() {
+        let (ready, rx) = mpsc::channel();
+        let worker = ManagedProvider::spawn("registered", true, move |context| {
+            ready.send(()).unwrap();
+            assert!(!context.wait(Duration::from_secs(3600)));
+            Ok(())
+        })
+        .unwrap();
+        let mut registry = ProviderRegistry::default();
+        registry.register(worker).unwrap();
+        rx.recv_timeout(LIMIT).unwrap();
+        let duplicate = ManagedProvider::spawn("registered", false, |_| Ok(())).unwrap();
+        assert_eq!(registry.register(duplicate), Err("duplicate provider"));
+        registry.stop_all();
+        registry.providers.remove("registered").unwrap().shutdown();
     }
 }
