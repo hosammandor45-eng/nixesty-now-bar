@@ -1,0 +1,57 @@
+name: Windows validation
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify Windows SDK
+        shell: pwsh
+        run: |
+          $rc = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\rc.exe' | Select-Object -Last 1
+          if (!$rc) { throw 'Windows SDK resource compiler is missing' }
+          Write-Output $rc.FullName
+      # Upstream has unformatted Rust. Keep the baseline visible without blocking builds.
+      - name: Report upstream formatting baseline
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+      - name: Check portable engine formatting
+        run: rustfmt --edition 2021 --check src/activities/engine.rs
+      - name: Test portable engine
+        shell: pwsh
+        run: |
+          rustc --edition 2021 --test src/activities/engine.rs -o "$env:RUNNER_TEMP/engine-tests.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:RUNNER_TEMP/engine-tests.exe"
+          exit $LASTEXITCODE
+      - name: Clippy
+        run: cargo lint --locked
+      - name: Workspace tests
+        run: cargo t --locked
+      - name: Release application
+        run: cargo build --release --locked --bin nowbar --bin nowbar-settings
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nowbar-pro-windows-x64
+          path: |
+            target/release/nowbar.exe
+            target/release/nowbar-settings.exe
+          if-no-files-found: error
