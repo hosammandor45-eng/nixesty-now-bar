@@ -4,6 +4,14 @@
 
 export global Theme {
     in-out property <bool> dark: true;
+    /// Logical pixels scale with Slint's per-monitor DPI handling.
+    out property <length> space-small: 8px;
+    out property <length> space-medium: 12px;
+    out property <length> control-radius: 10px;
+    out property <length> text-body: 13px;
+    in-out property <bool> reduced-motion: false;
+    out property <duration> motion-fast: reduced-motion ? 0ms : 100ms;
+    out property <duration> motion-standard: reduced-motion ? 0ms : 150ms;
     /// The window ground, lit from below the preview panel.
     out property <color> ground: dark ? #161618 : #EDEDEF;
     out property <color> ground-lit: dark ? #2A2A2C : #FAFAFB;

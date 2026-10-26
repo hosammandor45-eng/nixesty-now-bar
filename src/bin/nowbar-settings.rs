@@ -530,6 +530,7 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_preview_collapsed(s.settings_preview_collapsed);
     st.set_system_dark(system_dark());
     ui.global::<Theme>().set_dark(dark_for(s.settings_theme));
+    ui.global::<Theme>().set_reduced_motion(s.animation_speed == AnimationSpeed::Off);
 }
 
 /// The window's values over `base` (lists are kept in `base` by their own callbacks).
@@ -931,6 +932,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 let theme = pick(&[Look::System, Look::Dark, Look::Light], st.get_theme(), Look::System);
                 let dark = dark_for(theme);
                 ui.global::<Theme>().set_dark(dark);
+                ui.global::<Theme>().set_reduced_motion(st.get_speed() == 0);
                 style_title_bar(&ui, dark);
                 show_accent(&st);
                 st.set_system_dark(system_dark());
