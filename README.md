@@ -26,7 +26,9 @@ skoru, Claude Code'un ne yaptığı. Pile tıklayınca üstünde bir kart açıl
 
 - **Müzik:** Windows'ta medya oturumu açan her uygulama (Spotify, YouTube Music, tarayıcılar).
   Pil, albüm kapağının rengini alır; kartta kapak, dalgalı ilerleme çubuğu, şarkı sözleri ve ses
-  çıkışı seçimi bulunur.
+  çıkışı seçimi bulunur. Eşzamanlı söz varsa pilde şarkının adı yerine o anki satır kayar.
+- **Haftanın müziği:** son yedi günde en çok dinlediğin şarkılar ve sanatçılar; Dijital Denge
+  kartından ya da tepsi menüsünden açılır.
 - **Zamanlayıcı ve kronometre:** seçiciden (Win+Alt+N) ya da tepsi menüsünden başlatılır; süre
   dolunca alarm çalar ve kart açılır.
 - **Canlı maç:** takip ettiğin futbol ve basketbol takımlarının skoru, dakikası ve gol anları.
@@ -36,10 +38,23 @@ skoru, Claude Code'un ne yaptığı. Pile tıklayınca üstünde bir kart açıl
   eşleştirilmişse hangisinin gösterileceği ayarlardan seçilir.
 - **Claude Code:** Claude'un o an ne yaptığı ve görev listesi; izin istediğinde kartta
   **İzin ver / Reddet** düğmeleri çıkar ([aşağıda](#canlı-etkinlikler)).
+- **Claude'a sor:** Win+Alt+C ya da pile Ctrl ile tıklamak kartta bir yazı kutusu açar; cevap
+  Claude Code'dan akar. Bilgisayarda Claude Code kurulu ve oturumu açık olmalıdır (bir kez
+  terminalde `claude`, sonra `/login`).
 - **Oyunlar:** Steam ve Epic Games indirmeleri, güncellemeleri, duraklatmaları ve oyun süresi.
 - **Dijital Denge:** günün ekran süresi, uygulamaların payı ve koyduğun sınırlar.
 - **Raf:** pile bıraktığın dosyalar orada bekler, sonra istediğin yere sürükleyebilirsin; yeni
-  ekran görüntüleri rafa kendiliğinden eklenir.
+  ekran görüntüleri rafa kendiliğinden eklenir. Kartın altındaki düğmeler seçtiğin dosyalara
+  (seçim yoksa hepsine) uygulanır: **Paylaş** (Windows'un paylaşım penceresi; Quick Share
+  kuruluysa telefona da), **Metni kopyala** (ekran görüntüsündeki yazıyı panoya alır),
+  **Küçült** (resmi JPEG olarak, uzun kenarı en fazla 1920 piksel, aslının yanına kaydeder) ve
+  **Zip yap**.
+- **Dosya kopyalama:** Explorer kopyalarken, taşırken ya da silerken pilde yüzde ve kalan süre;
+  Explorer'ın penceresi küçültülse de.
+- **Sen yokken:** bilgisayar en az bir dakika kilitli kaldıysa ve o arada bir şey olduysa, kilidi
+  açınca pilde "Sen yokken" belirir; tıklayınca o arada olanların listesi açılır: Claude'un
+  bitirdiği işler, goller, yağmur ve hava uyarıları, biten indirmeler, zamanlayıcılar, uygulama
+  bildirimleri.
 - **Sistem:** ses seviyesi, şarj ve düşük pil uyarısı, mikrofonu ya da kamerayı kullanan
   uygulama, Bluetooth kulaklıkların şarjı.
 - Aynı anda birden fazla etkinlik varsa öndekinin sağında ince şeritler görünür; pilin üzerinde
@@ -106,7 +121,9 @@ kaldırma için `"%LOCALAPPDATA%\Programs\NowBar\nowbar-setup.exe" --uninstall -
 | Oynat / duraklat | Pile farenin orta tuşuyla tıkla |
 | Etkinlikler arasında geçiş | Pilin ya da kartın üzerinde fare tekerleği |
 | Zamanlayıcı seçicisi | Win+Alt+N (Ayarlar → Genel'den değiştirilebilir) |
-| Tepsi menüsü | Zamanlayıcı başlat, Kronometre başlat, Windows ile başlat, Ayarlar…, Çıkış |
+| Claude'a sor | Win+Alt+C ya da pile Ctrl ile tıkla (Ayarlar → Genel'den değiştirilebilir) |
+| Raftaki dosyaları seç | Kartta dosyaya tıkla; yeniden tıklayınca seçim kalkar |
+| Tepsi menüsü | Now Brief, Dijital Denge, Haftanın müziği, Claude'a sor, Zamanlayıcı başlat, Kronometre başlat, Windows ile başlat, Ayarlar…, Çıkış |
 
 ## Canlı etkinlikler
 
@@ -199,6 +216,9 @@ kullanır. Ayarlar penceresi Inter'i kendi içinde barındırır (`ui\fonts`, SI
 - Günlük: `%LOCALAPPDATA%\NowBar\log.txt`. Pilin ne zaman ve neden gizlendiği de buraya yazılır
   (`pill: hidden (nothing active)`, `media: Brave left (paused 10 min)` gibi).
 - Takım armaları: `%LOCALAPPDATA%\NowBar\crests\`
+- Haftanın müziği: `%LOCALAPPDATA%\NowBar\music.json` (yalnızca son yedi gün)
+- Raftan çıkan dosyalar (küçültülmüş resimler, zip'ler) asıllarının yanına yazılır; oraya
+  yazılamazsa `%LOCALAPPDATA%\NowBar\Raf\` klasörüne.
 
 ## Güncelleme
 
@@ -224,6 +244,13 @@ Now Bar'ın bağlandığı yerler (hiçbiri API anahtarı istemez):
   (`feeds.incrowdsports.com`, `live.euroleague.net`); armalar da bu kaynakların görsel
   adreslerinden indirilir.
 - **Güncelleme:** GitHub (`api.github.com`), yukarıda anlatıldığı gibi.
+- **Claude'a sor:** yazdığın soru bilgisayardaki Claude Code'a verilir (`claude -p`, araçsız:
+  dosyalarına ve komut satırına dokunamaz); Claude Code onu kendi oturumunla Anthropic'e gönderir.
+  Now Bar'ın kendisi bir yere bağlanmaz.
+
+Bu bilgisayarda kalanlar: haftanın müziği burada sayılır; **Metni kopyala** Windows'un kendi metin
+tanımasını kullanır; **Paylaş** yalnızca Windows'un paylaşım penceresini açar, dosyalar orada
+seçtiğin yere gider.
 
 **Uygulama bildirimleri** açıksa Now Bar yalnızca bu bilgisayardan erişilebilen `127.0.0.1:20034`
 ve `[::1]` adreslerini dinler (port doluysa Windows'un verdiği başka bir portu kullanır ve bunu
