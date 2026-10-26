@@ -282,6 +282,21 @@ Testler ve clippy (`.cargo\config.toml`'daki kısaltmalar) quick profilinde çal
   `gh release create vX.Y.Z dist\nowbar-setup.exe dist\nowbar.exe dist\nowbar-settings.exe dist\SHA256SUMS.txt`.
   `nowbar.exe --update-from <klasör>` güncellemeyi GitHub olmadan, bir klasördeki exe'lerle dener.
 
+## Lisans
+
+Now Bar, [GNU Genel Kamu Lisansı sürüm 3](LICENSE) (GPL-3.0) ile lisanslıdır. Kodu
+kullanabilir, değiştirebilir ve dağıtabilirsin; değiştirip dağıttığın sürümün kaynak kodunu da
+aynı lisansla açman gerekir. Telif hakkı © 2026 Kaan.
+
+Bu lisansın dışında kalanlar:
+
+- Galaxy Buds'ın gürültü kontrolü simgeleri (`src/activities/buds.rs`, `NoiseControl::icon`)
+  Samsung'un SystemUI'ından çizildi ve Samsung'a aittir; README görsellerinde de görünürler.
+- Claude'un işareti (`src/render/pill.rs`, `CLAUDE_ICON`) Anthropic'e aittir; o da görsellerde
+  görünür.
+- Ayarlar penceresinin yazı tipi Inter, kendi lisansıyla gelir (SIL Open Font License,
+  `ui\fonts\Inter-OFL.txt`).
+
 ---
 
 <sub>Samsung ile bir ilgisi yoktur; One UI'dan esinlenmiş bağımsız bir projedir. Galaxy Buds'ın
