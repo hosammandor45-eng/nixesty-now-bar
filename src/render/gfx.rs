@@ -376,11 +376,14 @@ impl Ink<'_> {
             let weight = st.weight.dwrite();
             let style = DWRITE_FONT_STYLE_NORMAL;
             let stretch = DWRITE_FONT_STRETCH_NORMAL;
-            let locale = &HSTRING::from("tr-TR");
+            let locale = &HSTRING::from(crate::i18n::lang().code());
             let fmt = match collection {
                 Some(c) => dw.CreateTextFormat(&family, c, weight, style, stretch, size, locale)?,
                 None => dw.CreateTextFormat(&family, None, weight, style, stretch, size, locale)?,
             };
+            if st.face != Face::Icons && crate::i18n::lang().is_rtl() {
+                fmt.SetReadingDirection(DWRITE_READING_DIRECTION_RIGHT_TO_LEFT)?;
+            }
             fmt.SetTextAlignment(st.align)?;
             fmt.SetParagraphAlignment(st.valign)?;
             fmt.SetWordWrapping(if st.wrap { DWRITE_WORD_WRAPPING_WRAP } else { DWRITE_WORD_WRAPPING_NO_WRAP })?;

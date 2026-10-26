@@ -147,17 +147,17 @@ fn idle_ms() -> u64 {
 }
 
 /// Starts the sampling thread; `post` runs on it after each minute's figures and each limit.
-pub fn start(mailbox: WellbeingMailbox, post: fn()) {
-    let spawned = std::thread::Builder::new().name("wellbeing".into()).spawn(move || {
+pub fn start(mailbox: WellbeingMailbox, post: fn()) -> std::io::Result<super::engine::ManagedProvider> {
+    super::engine::ManagedProvider::spawn("wellbeing", crate::settings::current().wellbeing_on, move |context| {
         let mut b = read_file();
-        if let Ok(mut m) = mailbox.lock() {
+        {
+            let mut m = mailbox.lock().map_err(|_| "wellbeing mailbox poisoned".to_string())?;
             *m = b.clone();
         }
         post();
         let mut samples = 0u32;
         let mut last_day = None;
-        loop {
-            std::thread::sleep(SAMPLE);
+        while context.wait(SAMPLE) {
             let s = crate::settings::current();
             if !s.wellbeing_on {
                 continue;
@@ -189,7 +189,8 @@ pub fn start(mailbox: WellbeingMailbox, post: fn()) {
             last_day = Some(day);
             if samples.is_multiple_of(SAVE_EVERY) || !b.crossed.is_empty() || new_day {
                 save(&b);
-                if let Ok(mut m) = mailbox.lock() {
+                {
+                    let mut m = mailbox.lock().map_err(|_| "wellbeing mailbox poisoned".to_string())?;
                     let crossed = std::mem::take(&mut b.crossed);
                     m.usage = b.usage.clone();
                     m.apps = b.apps.clone();
@@ -198,10 +199,10 @@ pub fn start(mailbox: WellbeingMailbox, post: fn()) {
                 post();
             }
         }
-    });
-    if let Err(e) = spawned {
-        log(&format!("wellbeing: no thread ({e})"));
-    }
+        // Flush the final partial minute on shutdown.
+        save(&b);
+        Ok(())
+    })
 }
 
 #[cfg(test)]

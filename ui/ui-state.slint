@@ -26,6 +26,8 @@ export global Ui {
     // The window draws its own title bar (no Windows caption): the Rust side moves, sizes,
     // minimises, maximises and closes it.
     in-out property <bool> maximized;
+    /// Updated from the physical window size in Rust, outside layout negotiation.
+    in-out property <length> viewport-width: 1240px;
     /// Set once the Rust side has taken over the frame's title bar (until then the window opens
     /// frameless, so Windows' title bar never shows, not even for a frame).
     in-out property <bool> framed;

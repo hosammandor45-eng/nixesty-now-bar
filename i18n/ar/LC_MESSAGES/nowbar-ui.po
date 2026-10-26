@@ -1,0 +1,3414 @@
+# Arabic translations. Untranslated entries retain the English fallback.
+# English for the Now Bar. msgid: the Turkish in the code; msgstr: its English.
+# tools/i18n-extract.py adds what's missing (empty msgstr); `cargo t` fails until it's filled in.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ar\n"
+"Plural-Forms: nplurals=6; plural=(n == 0 ? 0 : n == 1 ? 1 : n == 2 ? 2 : n % 100 >= 3 && n % 100 <= 10 ? 3 : n % 100 >= 11 ? 4 : 5);\n"
+
+msgid "Otomatik"
+msgstr "تلقائي"
+
+msgid "{} dk"
+msgstr "{} دقيقة"
+
+#: ui/pages.slint
+msgid "Dil"
+msgstr "اللغة"
+
+#: ui/pages.slint
+msgid "Arayüzün dili"
+msgstr "لغة الواجهة"
+
+#: ui/pages.slint
+msgid "Otomatik: Windows'unki"
+msgstr "تلقائي: لغة Windows"
+
+#: src/activities/buds.rs
+msgid "Gürültü engelleme"
+msgstr "Noise cancelling"
+
+#: src/activities/buds.rs
+msgid "Kapalı"
+msgstr "إيقاف"
+
+#: src/activities/buds.rs
+msgid "Ortam sesi"
+msgstr "Ambient sound"
+
+#: src/activities/buds.rs
+msgid "Uyarlanabilir"
+msgstr "Adaptive"
+
+#: src/activities/buds.rs
+msgid "bilinmeyen model"
+msgstr "unknown model"
+
+#: src/activities/buds.rs
+msgid "Kutu {}"
+msgstr "Case {}"
+
+#: src/activities/games.rs
+msgid "{} MB/sn"
+msgstr "{} MB/s"
+
+#: src/activities/games.rs
+msgid "{} KB/sn"
+msgstr "{} KB/s"
+
+#: src/activities/games.rs
+msgid "{} sa"
+msgstr "{} h"
+
+#: src/activities/games.rs
+msgid "{} sa {} dk"
+msgstr "{} h {} min"
+
+#: src/activities/games.rs
+msgid "1 dk'dan az kaldı"
+msgstr "Less than a minute left"
+
+#: src/activities/games.rs
+msgid "~{} kaldı"
+msgstr "~{} left"
+
+#: src/activities/games.rs
+msgid "Duraklatıldı · {}"
+msgstr "Paused · {}"
+
+#: src/activities/games.rs
+msgid "Duraklatıldı"
+msgstr "متوقف مؤقتًا"
+
+#: src/activities/games.rs
+msgid "Güncelleniyor · {}"
+msgstr "Updating · {}"
+
+#: src/activities/games_worker.rs
+msgid "kurulu oyun yok"
+msgstr "no games installed"
+
+#: src/activities/games_worker.rs
+msgid "{} oyun · {}{}"
+msgstr "{} games · {}{}"
+
+#: src/activities/timer.rs
+msgid "{} sn"
+msgstr "{} s"
+
+#: src/activities/wellbeing.rs
+msgid "dünle aynı"
+msgstr "same as yesterday"
+
+#: src/activities/wellbeing.rs
+msgid "dünden {} az"
+msgstr "{} less than yesterday"
+
+#: src/activities/wellbeing.rs
+msgid "dünden {} fazla"
+msgstr "{} more than yesterday"
+
+#: src/activities/wellbeing.rs
+msgid "{} saati geçtin"
+msgstr "over {} h"
+
+#: src/activities/wellbeing.rs
+msgid "{} dakikayı geçtin"
+msgstr "over {} min"
+
+#: src/activities/wellbeing.rs
+msgid "{} saat {} dakikayı geçtin"
+msgstr "over {} h {} min"
+
+#: src/activities/wellbeing.rs
+msgid "Dosya Gezgini"
+msgstr "File Explorer"
+
+#: src/activities/wellbeing.rs
+msgid "Pt"
+msgstr "Mo"
+
+#: src/activities/wellbeing.rs
+msgid "Sa"
+msgstr "Tu"
+
+#: src/activities/wellbeing.rs
+msgid "Ça"
+msgstr "We"
+
+#: src/activities/wellbeing.rs
+msgid "Pe"
+msgstr "Th"
+
+#: src/activities/wellbeing.rs
+msgid "Cu"
+msgstr "Fr"
+
+#: src/activities/wellbeing.rs
+msgid "Ct"
+msgstr "Sa"
+
+#: src/activities/wellbeing.rs
+msgid "Pz"
+msgstr "Su"
+
+msgctxt "hava"
+msgid "Kapalı"
+msgstr "إيقاف"
+
+#: src/activities/brief.rs
+msgid "Günaydın"
+msgstr "Good morning"
+
+#: src/activities/brief.rs
+msgid "İyi günler"
+msgstr "Good afternoon"
+
+#: src/activities/brief.rs
+msgid "İyi akşamlar"
+msgstr "Good evening"
+
+#: src/activities/brief.rs
+msgid "İyi geceler"
+msgstr "Good night"
+
+#: src/activities/brief.rs
+msgid "Pazartesi"
+msgstr "Monday"
+
+#: src/activities/brief.rs
+msgid "Salı"
+msgstr "Tuesday"
+
+#: src/activities/brief.rs
+msgid "Çarşamba"
+msgstr "Wednesday"
+
+#: src/activities/brief.rs
+msgid "Perşembe"
+msgstr "Thursday"
+
+#: src/activities/brief.rs
+msgid "Cuma"
+msgstr "Friday"
+
+#: src/activities/brief.rs
+msgid "Cumartesi"
+msgstr "Saturday"
+
+#: src/activities/brief.rs
+msgid "Pazar"
+msgstr "Sunday"
+
+#: src/activities/brief.rs
+msgid "Ocak"
+msgstr "January"
+
+#: src/activities/brief.rs
+msgid "Şubat"
+msgstr "February"
+
+#: src/activities/brief.rs
+msgid "Mart"
+msgstr "March"
+
+#: src/activities/brief.rs
+msgid "Nisan"
+msgstr "April"
+
+#: src/activities/brief.rs
+msgid "Mayıs"
+msgstr "May"
+
+#: src/activities/brief.rs
+msgid "Haziran"
+msgstr "June"
+
+#: src/activities/brief.rs
+msgid "Temmuz"
+msgstr "July"
+
+#: src/activities/brief.rs
+msgid "Ağustos"
+msgstr "August"
+
+#: src/activities/brief.rs
+msgid "Eylül"
+msgstr "September"
+
+#: src/activities/brief.rs
+msgid "Ekim"
+msgstr "October"
+
+#: src/activities/brief.rs
+msgid "Kasım"
+msgstr "November"
+
+#: src/activities/brief.rs
+msgid "Aralık"
+msgstr "December"
+
+#: src/activities/brief.rs
+msgid "kar"
+msgstr "snow"
+
+#: src/activities/brief.rs
+msgid "yağmur"
+msgstr "rain"
+
+#: src/activities/brief.rs
+msgid "{} civarı {}"
+msgstr "{1} around {0}"
+
+#: src/activities/brief.rs
+msgid "Devre arası"
+msgstr "Half-time"
+
+#: src/activities/brief.rs
+msgid "Canlı"
+msgstr "Live"
+
+#: src/activities/brief.rs
+msgid "{} · Canlı"
+msgstr "{} · Live"
+
+#: src/activities/brief.rs
+msgid "Bitti"
+msgstr "اكتمل"
+
+#: src/activities/brief.rs
+msgid "Dün"
+msgstr "Yesterday"
+
+#: src/activities/brief.rs
+msgid "Bugün"
+msgstr "Today"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Açık"
+msgstr "تشغيل"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Az bulutlu"
+msgstr "Mostly clear"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Parçalı bulutlu"
+msgstr "Partly cloudy"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Sisli"
+msgstr "Foggy"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Çiseleme"
+msgstr "Drizzle"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Yağmurlu"
+msgstr "Rainy"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Karlı"
+msgstr "Snowy"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Sağanak"
+msgstr "Showers"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Kar sağanağı"
+msgstr "Snow showers"
+
+#: src/activities/weather.rs
+msgctxt "hava"
+msgid "Gök gürültülü"
+msgstr "Thunderstorm"
+
+#: src/activities/weather.rs
+msgid "~1 saat içinde"
+msgstr "in ~1 hour"
+
+#: src/activities/weather.rs
+msgid "~{} dk içinde"
+msgstr "in ~{} min"
+
+#: src/activities/weather.rs
+msgid "Konum bulunamadı"
+msgstr "Location not found"
+
+#: src/activities/weather.rs
+msgid "Windows'ta konum kapalı"
+msgstr "Location is off in Windows"
+
+#: src/activities/weather.rs
+msgid "Bulunuyor…"
+msgstr "Finding…"
+
+#: src/activities/weather.rs
+msgid "Pzt"
+msgstr "Mon"
+
+#: src/activities/weather.rs
+msgid "Sal"
+msgstr "Tue"
+
+#: src/activities/weather.rs
+msgid "Çar"
+msgstr "Wed"
+
+#: src/activities/weather.rs
+msgid "Per"
+msgstr "Thu"
+
+#: src/activities/weather.rs
+msgid "Cum"
+msgstr "Fri"
+
+#: src/activities/weather.rs
+msgid "Cmt"
+msgstr "Sat"
+
+#: src/activities/weather.rs
+msgid "Paz"
+msgstr "Sun"
+
+#: src/activities/weather.rs
+msgid "Oca"
+msgstr "Jan"
+
+#: src/activities/weather.rs
+msgid "Şub"
+msgstr "Feb"
+
+#: src/activities/weather.rs
+msgid "Mar"
+msgstr "Mar"
+
+#: src/activities/weather.rs
+msgid "Nis"
+msgstr "Apr"
+
+#: src/activities/weather.rs
+msgid "May"
+msgstr "May"
+
+#: src/activities/weather.rs
+msgid "Haz"
+msgstr "Jun"
+
+#: src/activities/weather.rs
+msgid "Tem"
+msgstr "Jul"
+
+#: src/activities/weather.rs
+msgid "Ağu"
+msgstr "Aug"
+
+#: src/activities/weather.rs
+msgid "Eyl"
+msgstr "Sep"
+
+#: src/activities/weather.rs
+msgid "Eki"
+msgstr "Oct"
+
+#: src/activities/weather.rs
+msgid "Kas"
+msgstr "Nov"
+
+#: src/activities/weather.rs
+msgid "Ara"
+msgstr "Dec"
+
+#: src/activities/weather_alert.rs
+msgid "Fırtına"
+msgstr "Storm"
+
+#: src/activities/weather_alert.rs
+msgid "şu an"
+msgstr "now"
+
+#: src/activities/weather_alert.rs
+msgid "Kuvvetli rüzgâr"
+msgstr "Strong wind"
+
+#: src/activities/weather_alert.rs
+msgid "{} km/sa · şimdi"
+msgstr "{} km/h · now"
+
+#: src/activities/weather_alert.rs
+msgid "{} km/sa · {}"
+msgstr "{} km/h · {}"
+
+#: src/activities/weather_alert.rs
+msgid "Aşırı sıcak"
+msgstr "Extreme heat"
+
+#: src/activities/weather_alert.rs
+msgid "bugün {}°"
+msgstr "today {}°"
+
+#: src/activities/weather_alert.rs
+msgid "sabah {}°"
+msgstr "morning {}°"
+
+#: src/activities/weather_alert.rs
+msgid "gece {}°"
+msgstr "tonight {}°"
+
+#: src/activities/weather_alert.rs
+msgid "Don"
+msgstr "Frost"
+
+#: src/activities/weather_alert.rs
+msgid "Hava kalitesi çok kötü"
+msgstr "Very poor air quality"
+
+#: src/activities/weather_alert.rs
+msgid "Hava kalitesi kötü"
+msgstr "Poor air quality"
+
+#: src/app.rs
+msgctxt "maç"
+msgid " (KK)"
+msgstr " (OG)"
+
+#: src/app.rs
+msgid "Başlıyor"
+msgstr "Starting"
+
+#: src/app.rs
+msgid "{} dk sonra"
+msgstr "in {} min"
+
+#: src/app.rs
+msgid "{} sa {} dk sonra"
+msgstr "in {} h {} min"
+
+#: src/app.rs
+msgid "Uzatma arası"
+msgstr "Extra-time break"
+
+#: src/app.rs
+msgid "Penaltılar{}"
+msgstr "Penalties{}"
+
+#: src/app.rs
+msgid "Maç sonu"
+msgstr "Full time"
+
+#: src/app.rs
+msgid "Uzatmalar sonunda"
+msgstr "After extra time"
+
+#: src/app.rs
+msgid "Penaltılarla{}"
+msgstr "On penalties{}"
+
+#: src/app.rs
+msgid "Ertelendi"
+msgstr "Postponed"
+
+#: src/app.rs
+msgid "İptal edildi"
+msgstr "Cancelled"
+
+#: src/app.rs
+msgid "Tatil edildi"
+msgstr "Abandoned"
+
+#: src/app.rs
+msgid "Teknik ekip"
+msgstr "Coaching staff"
+
+#: src/app.rs
+msgid "Ekran süresi · {}"
+msgstr "Screen time · {}"
+
+#: src/app.rs
+msgid "Bugün · {}"
+msgstr "Today · {}"
+
+#: src/app.rs
+msgid "Süre doldu"
+msgstr "Time's up"
+
+#: src/app.rs
+msgid "Zamanlayıcı"
+msgstr "المؤقت"
+
+#: src/app.rs
+msgid "Zamanlayıcı · {}"
+msgstr "Timer · {}"
+
+#: src/app.rs
+msgid "Güncellendi"
+msgstr "Updated"
+
+#: src/app.rs
+msgid "{} oynadın"
+msgstr "Played {}"
+
+#: src/app.rs
+msgid "Başladı {}"
+msgstr "Started {}"
+
+#: src/app.rs
+msgid "Oynamaya hazır"
+msgstr "Ready to play"
+
+#: src/app.rs
+msgid "İndiriliyor · {}"
+msgstr "Downloading · {}"
+
+#: src/app.rs
+msgid "Oynuyor · {}"
+msgstr "Playing · {}"
+
+#: src/app.rs
+msgid "Çalışıyor · {}"
+msgstr "Running · {}"
+
+#: src/app.rs
+msgid "Rafa bırak"
+msgstr "Drop on the shelf"
+
+#: src/app.rs
+msgid "Geçiliyor…"
+msgstr "Switching…"
+
+#: src/app.rs
+msgid "Geçilemedi · tekrar deneyin"
+msgstr "Couldn't switch · try again"
+
+#: src/app.rs
+msgid "Şu anda çalıyor"
+msgstr "Playing now"
+
+#: src/app.rs
+msgid "{} · En düşük {} · En yüksek {}"
+msgstr "{} · Low {} · High {}"
+
+#: src/activities/brief.rs
+msgctxt "maç"
+msgid "Bitti"
+msgstr "اكتمل"
+
+#: src/activities/claude.rs
+msgid "Okuyor"
+msgstr "Reading"
+
+#: src/activities/claude.rs
+msgid "Düzenliyor"
+msgstr "Editing"
+
+#: src/activities/claude.rs
+msgid "Yazıyor"
+msgstr "Writing"
+
+#: src/activities/claude.rs
+msgid "Çalıştırıyor"
+msgstr "Running"
+
+#: src/activities/claude.rs
+msgid "Arıyor"
+msgstr "Searching"
+
+#: src/activities/claude.rs
+msgid "Alt ajan"
+msgstr "Subagent"
+
+#: src/activities/claude.rs
+msgid "Araç"
+msgstr "Tool"
+
+#: src/activities/claude.rs
+msgid "Bitti · {}"
+msgstr "Done · {}"
+
+#: src/activities/claude.rs
+msgid "Bitti · {} · {} dosya"
+msgstr "Done · {} · {} files"
+
+#: src/activities/claude.rs
+msgid "Kota doldu"
+msgstr "Usage limit reached"
+
+#: src/activities/claude.rs
+msgid "Sunucu yoğun"
+msgstr "Server busy"
+
+#: src/activities/claude.rs
+msgid "Oturum açılmalı"
+msgstr "Sign-in needed"
+
+#: src/activities/claude.rs
+msgid "Ödeme sorunu"
+msgstr "Billing problem"
+
+#: src/activities/claude.rs
+msgid "Yanıt sınırı aşıldı"
+msgstr "Reply too long"
+
+#: src/activities/claude.rs
+msgid "Bir hata oldu"
+msgstr "Something went wrong"
+
+#: src/activities/claude.rs
+msgid "{} (+{} satır)"
+msgstr "{} (+{} lines)"
+
+#: src/activities/claude.rs
+msgid "Bir soru"
+msgstr "A question"
+
+#: src/activities/claude.rs
+msgid "Plan onayı"
+msgstr "Plan approval"
+
+#: src/activities/live.rs
+msgid "İzin verildi"
+msgstr "Allowed"
+
+#: src/activities/live.rs
+msgid "Reddedildi"
+msgstr "Denied"
+
+#: src/activities/live.rs
+msgid "Düşünüyor"
+msgstr "Thinking"
+
+#: src/activities/live.rs
+msgid "İzin istiyor"
+msgstr "Asking permission"
+
+#: src/activities/live.rs
+msgid "Soru soruyor"
+msgstr "Asking a question"
+
+#: src/activities/live.rs
+msgid "Plan onayı bekliyor"
+msgstr "Waiting for plan approval"
+
+#: src/activities/live.rs
+msgid "İzin istiyor: {}"
+msgstr "Asking permission: {}"
+
+#: src/activities/live.rs
+msgid "Yanıtını bekliyor"
+msgstr "Waiting for your answer"
+
+#: src/activities/live.rs
+msgid "Bekliyor"
+msgstr "قيد الانتظار"
+
+#: src/activities/media.rs
+msgid "Medya Oynatıcı"
+msgstr "Media Player"
+
+#: src/render/card.rs
+msgid "Dahili"
+msgstr "Built-in"
+
+#: src/render/card.rs
+msgid "Sanal"
+msgstr "Virtual"
+
+#: src/render/card.rs
+msgid "{} · Sol {} · Sağ {}"
+msgstr "{} · L {} · R {}"
+
+#: src/render/card.rs
+msgid "+{} dk"
+msgstr "+{} min"
+
+#: src/render/card.rs
+msgid "İzin istiyor · {}"
+msgstr "Asking permission · {}"
+
+#: src/render/card.rs
+msgid "Claude'un penceresinde yanıtla"
+msgstr "Answer in Claude's window"
+
+#: src/render/card.rs
+msgid "Pencereye git"
+msgstr "Go to window"
+
+#: src/render/card.rs
+msgid "Reddet"
+msgstr "Deny"
+
+#: src/render/card.rs
+msgid "İzin ver"
+msgstr "Allow"
+
+#: src/render/card.rs
+msgid "Henüz gol yok"
+msgstr "No goals yet"
+
+#: src/render/card.rs
+msgid "Son 5 maç"
+msgstr "Last 5 matches"
+
+#: src/render/card.rs
+msgid "Bu bilgisayara bağlı"
+msgstr "Connected to this PC"
+
+#: src/render/card.rs
+msgid "Sol"
+msgstr "Left"
+
+#: src/render/card.rs
+msgid "Sağ"
+msgstr "Right"
+
+#: src/render/card.rs
+msgid "Kutu"
+msgstr "Case"
+
+#: src/render/card.rs
+msgid "Temizle"
+msgstr "مسح"
+
+#: src/render/card.rs
+msgid "Dijital Denge"
+msgstr "الرفاهية الرقمية"
+
+#: src/render/card.rs
+msgid "Bugün henüz ekran süresi yok"
+msgstr "No screen time yet today"
+
+#: src/render/card.rs
+msgid "Ses çıkışı"
+msgstr "مخرج الصوت"
+
+#: src/render/card.rs
+msgid "Sessiz"
+msgstr "Muted"
+
+#: src/render/card.rs
+msgid "Kapak"
+msgstr "Cover"
+
+#: src/render/card.rs
+msgid "Sözler"
+msgstr "Lyrics"
+
+#: src/render/card.rs
+msgid "Kronometre"
+msgstr "ساعة الإيقاف"
+
+#: src/render/card.rs
+msgid "Başlat'a basınca saymaya başlar"
+msgstr "Counts once you press Start"
+
+#: src/render/card.rs
+msgid "sa"
+msgstr "h"
+
+#: src/render/card.rs
+msgid "dk"
+msgstr "min"
+
+#: src/render/card.rs
+msgid "sn"
+msgstr "s"
+
+#: src/render/card.rs
+msgid "Başlat"
+msgstr "بدء"
+
+#: src/render/pill.rs
+msgid "Kamera, mikrofon"
+msgstr "Camera, microphone"
+
+#: src/render/pill.rs
+msgid "Kamera"
+msgstr "Camera"
+
+#: src/render/pill.rs
+msgid "Mikrofon"
+msgstr "Microphone"
+
+#: src/render/pill.rs
+msgid "Ekran görüntüsü"
+msgstr "Screenshot"
+
+#: src/render/pill.rs
+msgid "Kar"
+msgstr "Snow"
+
+#: src/render/pill.rs
+msgid "Yağmur"
+msgstr "Rain"
+
+#: src/render/pill.rs
+msgid "Pil azaldı"
+msgstr "Battery low"
+
+#: src/render/pill.rs
+msgid "Şarj oluyor"
+msgstr "Charging"
+
+#: src/render/pill.rs
+msgid "GOL!"
+msgstr "GOAL!"
+
+#: src/render/pill.rs
+msgid "Gol"
+msgstr "Goal"
+
+#: src/render/pill.rs
+msgid "Gol iptal"
+msgstr "No goal"
+
+#: src/render/pill.rs
+msgid "Kırmızı kart"
+msgstr "Red card"
+
+#: ui/pages.slint
+msgctxt "tema"
+msgid "Açık"
+msgstr "تشغيل"
+
+#: ui/pages.slint
+msgid "%{}"
+msgstr "{}%"
+
+#: ui/pages.slint
+msgid "Pil"
+msgstr "الشريط"
+
+#: ui/pages.slint
+msgid "önde ve arkada"
+msgstr "in front and behind"
+
+#: ui/pages.slint
+msgid "Medya"
+msgstr "الوسائط"
+
+#: ui/pages.slint
+msgid "önde"
+msgstr "in front"
+
+#: ui/pages.slint
+msgid "arkada"
+msgstr "behind"
+
+#: ui/pages.slint
+msgid "Pil boyutu"
+msgstr "حجم الشريط"
+
+#: ui/pages.slint
+msgid "3 seçenek"
+msgstr "3 options"
+
+#: ui/pages.slint
+msgid "Küçük"
+msgstr "Small"
+
+#: ui/pages.slint
+msgid "Normal"
+msgstr "عادي"
+
+#: ui/pages.slint
+msgid "Büyük"
+msgstr "كبير"
+
+#: ui/pages.slint
+msgid "Kart boyutu"
+msgstr "حجم البطاقة"
+
+#: ui/pages.slint
+msgid "2 seçenek"
+msgstr "2 options"
+
+#: ui/pages.slint
+msgid "Kompakt"
+msgstr "مدمج"
+
+#: ui/pages.slint
+msgid "bütün kartlar %88"
+msgstr "all cards 88%"
+
+#: ui/pages.slint
+msgid "Konum"
+msgstr "الموضع"
+
+#: ui/pages.slint
+msgid "Opaklık"
+msgstr "Opacity"
+
+#: ui/pages.slint
+msgid "Arkadakileri göster"
+msgstr "Show the ones behind"
+
+#: ui/pages.slint
+msgid "Renk"
+msgstr "اللون"
+
+#: ui/pages.slint
+msgid "Duvar kâğıdından"
+msgstr "من خلفية الشاشة"
+
+#: ui/pages.slint
+msgid "Vurgu duvar kâğıdının renginde"
+msgstr "Accent in the wallpaper's color"
+
+#: ui/pages.slint
+msgid "Duvar kâğıdı gri: seçtiğin renk"
+msgstr "Gray wallpaper: the color you picked"
+
+#: ui/pages.slint
+msgid "Vurgu rengi"
+msgstr "لون التمييز"
+
+#: ui/pages.slint
+msgid "Seçince duvar kâğıdı kapanır"
+msgstr "Picking one turns the wallpaper off"
+
+#: ui/pages.slint
+msgid "Kapak rengini kullan"
+msgstr "استخدام لون الغلاف"
+
+#: ui/pages.slint
+msgid "Kart"
+msgstr "البطاقة"
+
+#: ui/pages.slint
+msgid "Bulanıklık"
+msgstr "التمويه"
+
+#: ui/pages.slint
+msgid "Koyuluk"
+msgstr "Darkness"
+
+#: ui/pages.slint
+msgid "Doygunluk"
+msgstr "Saturation"
+
+#: ui/pages.slint
+msgid "Hareket"
+msgstr "الحركة"
+
+#: ui/pages.slint
+msgid "Animasyon hızı"
+msgstr "سرعة الحركة"
+
+#: ui/pages.slint
+msgid "Yavaş"
+msgstr "بطيء"
+
+#: ui/pages.slint
+msgid "Hızlı"
+msgstr "سريع"
+
+#: ui/pages.slint
+msgid "Kısayollar"
+msgstr "Shortcuts"
+
+#: ui/pages.slint
+msgid "1 kısayol"
+msgstr "1 shortcut"
+
+#: ui/pages.slint
+msgid "Zamanlayıcı seçicisi"
+msgstr "Timer picker"
+
+#: ui/pages.slint
+msgid "seçiciyi açar"
+msgstr "opens the picker"
+
+#: ui/pages.slint
+msgid "Tepsi simgesi"
+msgstr "Tray icon"
+
+#: ui/pages.slint
+msgid "sol tık"
+msgstr "left click"
+
+#: ui/pages.slint
+msgid "Bu pencere"
+msgstr "This window"
+
+#: ui/pages.slint
+msgid "3 tema"
+msgstr "3 themes"
+
+#: ui/pages.slint
+msgid "Sistem"
+msgstr "النظام"
+
+#: ui/pages.slint
+msgid "Windows'a uyar"
+msgstr "Follows Windows"
+
+#: ui/pages.slint
+msgid "Koyu"
+msgstr "داكن"
+
+#: ui/pages.slint
+msgid "her zaman koyu"
+msgstr "always dark"
+
+#: ui/pages.slint
+msgid "her zaman açık"
+msgstr "always light"
+
+#: ui/pages.slint
+msgid "Başlangıç"
+msgstr "Startup"
+
+#: ui/pages.slint
+msgid "Windows ile başlat"
+msgstr "التشغيل مع Windows"
+
+#: ui/pages.slint
+msgid "Kısayol ve tepsi"
+msgstr "Shortcut and tray"
+
+#: ui/pages.slint
+msgid "Seçici kısayolu"
+msgstr "Picker shortcut"
+
+#: ui/pages.slint
+msgid "Tepsiye sol tık"
+msgstr "Tray left click"
+
+#: ui/pages.slint
+msgid "Seçici"
+msgstr "Picker"
+
+#: ui/pages.slint
+msgid "Ayarlar"
+msgstr "Settings"
+
+#: ui/pages.slint
+msgid "Fare"
+msgstr "Mouse"
+
+#: ui/pages.slint
+msgid "Ayrılınca kartı kapat"
+msgstr "Close the card on leave"
+
+#: ui/pages.slint
+msgid "Gecikme"
+msgstr "Delay"
+
+#: ui/pages.slint
+msgid " ms"
+msgstr " ms"
+
+#: ui/pages.slint
+msgid "Tekerlek gezer"
+msgstr "Wheel switches"
+
+#: ui/pages.slint
+msgid "Pilin ve kartın üstünde"
+msgstr "Over the pill and the card"
+
+#: ui/pages.slint
+msgid "Seçtiğim önde kalsın"
+msgstr "Keep my pick in front"
+
+#: ui/pages.slint
+msgid "Yeni bir şey olana dek"
+msgstr "Until something new happens"
+
+#: ui/pages.slint
+msgid "Uygulamalar"
+msgstr "Apps"
+
+#: ui/pages.slint
+msgid " uygulama · tıkla: göster / gizle"
+msgstr " apps · click: show / hide"
+
+#: ui/pages.slint
+msgid "Henüz uygulama yok"
+msgstr "No apps yet"
+
+#: ui/pages.slint
+msgid "bir şey çalınca burada görünür"
+msgstr "shows up here once something plays"
+
+#: ui/pages.slint
+msgid "şu an çalıyor"
+msgstr "playing now"
+
+#: ui/pages.slint
+msgid "Gösteriliyor"
+msgstr "Shown"
+
+#: ui/pages.slint
+msgid "Gizli"
+msgstr "Hidden"
+
+#: ui/pages.slint
+msgid "Pil düğmeleri"
+msgstr "Pill buttons"
+
+#: ui/pages.slint
+msgid "Üç düğme"
+msgstr "Three buttons"
+
+#: ui/pages.slint
+msgid "önceki, oynat, sonraki"
+msgstr "previous, play, next"
+
+#: ui/pages.slint
+msgid "Sadece oynat"
+msgstr "Play only"
+
+#: ui/pages.slint
+msgid "başlığa daha çok yer"
+msgstr "more room for the title"
+
+#: ui/pages.slint
+msgid "Düğmesiz"
+msgstr "No buttons"
+
+#: ui/pages.slint
+msgid "yalnızca başlık"
+msgstr "title only"
+
+#: ui/pages.slint
+msgid "Medya pili"
+msgstr "Media pill"
+
+#: ui/pages.slint
+msgid "şu anki ayarlarla"
+msgstr "with the current settings"
+
+#: ui/pages.slint
+msgid "Örnek"
+msgstr "Sample"
+
+#: ui/pages.slint
+msgid "sanatçıyla"
+msgstr "with the artist"
+
+#: ui/pages.slint
+msgid "sanatçısız"
+msgstr "without the artist"
+
+#: ui/pages.slint
+msgid "Etkinlik"
+msgstr "Activity"
+
+#: ui/pages.slint
+msgid "Sanatçıyı göster"
+msgstr "Show the artist"
+
+#: ui/pages.slint
+msgid "Ses dalgası"
+msgstr "Waveform"
+
+#: ui/pages.slint
+msgid "Kapağın yanında, sesle oynar"
+msgstr "Beside the cover, moves with the sound"
+
+#: ui/pages.slint
+msgid "Kayan başlık"
+msgstr "Scrolling title"
+
+#: ui/pages.slint
+msgid "Değişince"
+msgstr "When it changes"
+
+#: ui/pages.slint
+msgid "Üstündeyken"
+msgstr "On hover"
+
+#: ui/pages.slint
+msgid "Kayma hızı"
+msgstr "Scroll speed"
+
+#: ui/pages.slint
+msgid "Dalgalı çubuk"
+msgstr "Wavy bar"
+
+#: ui/pages.slint
+msgid "Şarkı sözleri"
+msgstr "كلمات الأغنية"
+
+#: ui/pages.slint
+msgid "Eşzamanlı, lrclib.net'ten"
+msgstr "Synced, from lrclib.net"
+
+#: ui/pages.slint
+msgid "Orta tıkla oynat"
+msgstr "Middle-click to play"
+
+#: ui/pages.slint
+msgid "Duraklayınca kal"
+msgstr "Stay when paused"
+
+#: ui/pages.slint
+msgid "1 dk"
+msgstr "1 min"
+
+#: ui/pages.slint
+msgid "5 dk"
+msgstr "5 min"
+
+#: ui/pages.slint
+msgid "10 dk"
+msgstr "10 min"
+
+#: ui/pages.slint
+msgid "30 dk"
+msgstr "30 min"
+
+#: ui/pages.slint
+msgid "Hep"
+msgstr "Always"
+
+#: ui/pages.slint
+msgid "Ses çıkışları"
+msgstr "Sound outputs"
+
+#: ui/pages.slint
+msgid "Kullanılıyor"
+msgstr "In use"
+
+#: ui/pages.slint
+msgid "Pilde"
+msgstr "In the pill"
+
+#: ui/pages.slint
+msgid "örnek"
+msgstr "sample"
+
+#: ui/pages.slint
+msgid "kapalı"
+msgstr "off"
+
+#: ui/pages.slint
+msgid "Hazır süreler"
+msgstr "Presets"
+
+#: ui/pages.slint
+msgid " süre · en çok altı"
+msgstr " durations · six at most"
+
+#: ui/pages.slint
+msgid " dakika"
+msgstr " minutes"
+
+#: ui/pages.slint
+msgid "seçicide"
+msgstr "in the picker"
+
+#: ui/pages.slint
+msgid "Süre ekle"
+msgstr "Add a duration"
+
+#: ui/pages.slint
+msgid "dakika yaz, Enter"
+msgstr "type minutes, Enter"
+
+#: ui/pages.slint
+msgid "Süre dolunca"
+msgstr "When time's up"
+
+#: ui/pages.slint
+msgid "Alarm sesi"
+msgstr "Alarm sound"
+
+#: ui/pages.slint
+msgid "Kartı aç"
+msgstr "Open the card"
+
+#: ui/pages.slint
+msgid "Ekle düğmesi"
+msgstr "Add button"
+
+#: ui/pages.slint
+msgid "Saliseyi göster"
+msgstr "Show tenths"
+
+#: ui/pages.slint
+msgid "Bağlanınca öne gel"
+msgstr "Come forward on connect"
+
+#: ui/pages.slint
+msgid "4 seçenek"
+msgstr "4 options"
+
+#: ui/pages.slint
+msgid "öne gelmez"
+msgstr "stays put"
+
+#: ui/pages.slint
+msgid "saniye önde"
+msgstr "seconds in front"
+
+#: ui/pages.slint
+msgid "Hayır"
+msgstr "No"
+
+#: ui/pages.slint
+msgid " sn"
+msgstr " s"
+
+#: ui/pages.slint
+msgid "Kulaklık"
+msgstr "Earbuds"
+
+#: ui/pages.slint
+msgid "Bağlanan ilk Buds"
+msgstr "The first Buds to connect"
+
+#: ui/pages.slint
+msgid "Yalnız bu cihaz"
+msgstr "Only this device"
+
+#: ui/pages.slint
+msgid "Pil uyarısı"
+msgstr "Battery warning"
+
+#: ui/pages.slint
+msgid "Düşük pil"
+msgstr "Low battery"
+
+#: ui/pages.slint
+msgid "Altında öne gelir"
+msgstr "Comes forward below this"
+
+#: ui/pages.slint
+msgid "Kutu pilini göster"
+msgstr "Show the case battery"
+
+#: ui/pages.slint
+msgid "Bir kulaklık kutudayken"
+msgstr "While a bud is in the case"
+
+#: ui/pages.slint
+msgid "Müzik"
+msgstr "Music"
+
+#: ui/pages.slint
+msgid "Kulaktan çıkınca duraklat"
+msgstr "Pause when taken out"
+
+#: ui/pages.slint
+msgid "Geri takınca devam eder"
+msgstr "Plays again when put back"
+
+#: ui/pages.slint
+msgid "Sonuçlar"
+msgstr "Results"
+
+#: ui/pages.slint
+msgid "aranıyor…"
+msgstr "searching…"
+
+#: ui/pages.slint
+msgid "ESPN'e ulaşılamadı"
+msgstr "Couldn't reach ESPN"
+
+#: ui/pages.slint
+msgid " takım · ESPN"
+msgstr " teams · ESPN"
+
+#: ui/pages.slint
+msgid "Takım bulunamadı"
+msgstr "No team found"
+
+#: ui/pages.slint
+msgid "başka bir ad dene"
+msgstr "try another name"
+
+#: ui/pages.slint
+msgid "Takipte"
+msgstr "Following"
+
+#: ui/pages.slint
+msgid "Maç pili"
+msgstr "Match pill"
+
+#: ui/pages.slint
+msgid "Örnek maç"
+msgstr "Sample match"
+
+#: ui/pages.slint
+msgid "canlı, örnek"
+msgstr "live, sample"
+
+#: ui/pages.slint
+msgid "Takip ettiklerin"
+msgstr "You follow"
+
+#: ui/pages.slint
+msgid " takım"
+msgstr " teams"
+
+#: ui/pages.slint
+msgid "Takım ekle"
+msgstr "Add a team"
+
+#: ui/pages.slint
+msgid "yukarıda ara"
+msgstr "search above"
+
+#: ui/pages.slint
+msgid "Canlı maç"
+msgstr "المباريات المباشرة"
+
+#: ui/pages.slint
+msgid "Ne zaman"
+msgstr "When"
+
+#: ui/pages.slint
+msgid "Maçtan önce"
+msgstr "Before the match"
+
+#: ui/pages.slint
+msgid "Başlayınca"
+msgstr "Once it starts"
+
+#: ui/pages.slint
+msgid "Bitince kalsın"
+msgstr "Stay after the end"
+
+#: ui/pages.slint
+msgid "Anlar"
+msgstr "Moments"
+
+#: ui/pages.slint
+msgid "Rakip golünde de an"
+msgstr "A moment for the opponent's goals too"
+
+#: ui/pages.slint
+msgid "Gol olunca pil kısa süre büyür"
+msgstr "The pill grows briefly on a goal"
+
+#: ui/pages.slint
+msgid "Gol sesi"
+msgstr "Goal sound"
+
+#: ui/pages.slint
+msgid "Takımın gol atınca"
+msgstr "When your team scores"
+
+#: ui/pages.slint
+msgid "İstisnalar"
+msgstr "Exceptions"
+
+#: ui/pages.slint
+msgid " uygulama · tam ekranda da görünür"
+msgstr " apps · shown in full screen too"
+
+#: ui/pages.slint
+msgid "Henüz istisna yok"
+msgstr "No exceptions yet"
+
+#: ui/pages.slint
+msgid "yukarıya bir uygulama adı yaz"
+msgstr "type an app's name above"
+
+#: ui/pages.slint
+msgid "Görünür"
+msgstr "Visible"
+
+#: ui/pages.slint
+msgid "Açık uygulamalar"
+msgstr "Open apps"
+
+#: ui/pages.slint
+msgid "tıkla: istisna yap"
+msgstr "click: make an exception"
+
+#: ui/pages.slint
+msgid "Ekle"
+msgstr "إضافة"
+
+#: ui/pages.slint
+msgid "Tam ekranda gizle"
+msgstr "Hide in full screen"
+
+#: ui/pages.slint
+msgid "Oyun, video ya da sunum açıkken"
+msgstr "While a game, video or presentation is full screen"
+
+#: ui/pages.slint
+msgid "Maç verileri"
+msgstr "Match data"
+
+#: ui/pages.slint
+msgid "skor, dakika, armalar"
+msgstr "score, minute, crests"
+
+#: ui/pages.slint
+msgid "Esin kaynağı"
+msgstr "Inspired by"
+
+#: ui/pages.slint
+msgid "Samsung'un Now Bar'ı"
+msgstr "Samsung's Now Bar"
+
+#: ui/pages.slint
+msgid "Güncelleme"
+msgstr "Updates"
+
+#: ui/pages.slint
+msgid "günde bir kez GitHub'dan"
+msgstr "once a day from GitHub"
+
+#: ui/pages.slint
+msgid "denetim kapalı"
+msgstr "checking is off"
+
+#: ui/pages.slint
+msgid "Güncelle"
+msgstr "Update"
+
+#: ui/pages.slint
+msgid "Sürüm"
+msgstr "الإصدار"
+
+#: ui/pages.slint
+msgid "Dosyalar"
+msgstr "Files"
+
+#: ui/pages.slint
+msgid "sorun bildirirken işine yarar"
+msgstr "handy when reporting a problem"
+
+#: ui/pages.slint
+msgid "Günlük"
+msgstr "Log"
+
+#: ui/pages.slint
+msgid "Ayar dosyası"
+msgstr "Settings file"
+
+#: ui/pages.slint
+msgid "Güncellemeleri denetle"
+msgstr "التحقق من التحديثات"
+
+#: ui/pages.slint
+msgid "Günde bir kez GitHub'a sorar"
+msgstr "Asks GitHub once a day"
+
+#: ui/pages.slint
+msgid "Sıfırla"
+msgstr "إعادة تعيين"
+
+#: ui/pages.slint
+msgid "Bütün ayarlar ilk hallerine döner; takımlar, gizlenen uygulamalar ve istisnalar da silinir."
+msgstr "Every setting goes back to its default; teams, hidden apps and exceptions are removed too."
+
+#: ui/pages.slint
+msgid "Varsayılanlara dön…"
+msgstr "استعادة الإعدادات الافتراضية…"
+
+#: ui/pages.slint
+msgid "5 etkinlik · tıkla: aç / kapat"
+msgstr "5 activities · click: on / off"
+
+#: ui/pages.slint
+msgid "Ses seviyesi"
+msgstr "Volume"
+
+#: ui/pages.slint
+msgid "ses değişince, bir an"
+msgstr "when it changes, for a moment"
+
+#: ui/pages.slint
+msgid "Şarj"
+msgstr "Charging"
+
+#: ui/pages.slint
+msgid "takınca ve pil azalınca"
+msgstr "plugged in, and when low"
+
+#: ui/pages.slint
+msgid "Mikrofon / kamera"
+msgstr "Microphone / camera"
+
+#: ui/pages.slint
+msgid "kullanılırken"
+msgstr "while in use"
+
+#: ui/pages.slint
+msgid "Diğer kulaklıklar"
+msgstr "Other headphones"
+
+#: ui/pages.slint
+msgid "Bluetooth, piliyle"
+msgstr "Bluetooth, with battery"
+
+#: ui/pages.slint
+msgid "Saat ve hava"
+msgstr "Clock and weather"
+
+#: ui/pages.slint
+msgid "boştayken"
+msgstr "when idle"
+
+#: ui/pages.slint
+msgid "hep"
+msgstr "always"
+
+#: ui/pages.slint
+msgid "yığında"
+msgstr "in the stack"
+
+#: ui/pages.slint
+msgid "Şehir"
+msgstr "City"
+
+#: ui/pages.slint
+msgid "Aranıyor…"
+msgstr "Searching…"
+
+#: ui/pages.slint
+msgid "Bağlantı kurulamadı"
+msgstr "Couldn't connect"
+
+#: ui/pages.slint
+msgid "Bulunamadı"
+msgstr "Not found"
+
+#: ui/pages.slint
+msgid "Birini seç"
+msgstr "Pick one"
+
+#: ui/pages.slint
+msgid "Ad yaz, Enter"
+msgstr "Type a name, Enter"
+
+#: ui/pages.slint
+msgid "İzmir, Berlin…"
+msgstr "London, Berlin…"
+
+#: ui/pages.slint
+msgid "Ses seviyesini göster"
+msgstr "Show the volume"
+
+#: ui/pages.slint
+msgid "Ses değişince kısa bir an pilde"
+msgstr "Briefly, when it changes"
+
+#: ui/pages.slint
+msgid "Şarjı göster"
+msgstr "Show charging"
+
+#: ui/pages.slint
+msgid "Takınca ve pil azalınca bir an"
+msgstr "Plugged in, and when low"
+
+#: ui/pages.slint
+msgid "Altına inince uyarır"
+msgstr "Warns below this"
+
+#: ui/pages.slint
+msgid "Kullanımı göster"
+msgstr "Show use"
+
+#: ui/pages.slint
+msgid "Bir uygulama kullanırken pilde"
+msgstr "In the pill while an app uses them"
+
+#: ui/pages.slint
+msgid "Kulaklıkları göster"
+msgstr "Show headphones"
+
+#: ui/pages.slint
+msgid "Galaxy Buds dışındakiler, piliyle"
+msgstr "Other than Galaxy Buds, with battery"
+
+#: ui/pages.slint
+msgid "Ekran görüntüleri"
+msgstr "Screenshots"
+
+#: ui/pages.slint
+msgid "Pilde göster"
+msgstr "Show in the pill"
+
+#: ui/pages.slint
+msgid "ShareX ve Ekran Alıntısı Aracı"
+msgstr "ShareX and the Snipping Tool"
+
+#: ui/pages.slint
+msgid "Rafa ekle"
+msgstr "Add to the shelf"
+
+#: ui/pages.slint
+msgid "Sonra sürükleyip atmak için"
+msgstr "To drag and drop later"
+
+#: ui/pages.slint
+msgid "Canlı etkinlikler"
+msgstr "Live activities"
+
+#: ui/pages.slint
+msgid "Betikler ve Claude Code pilde"
+msgstr "Scripts and Claude Code in the pill"
+
+#: ui/pages.slint
+msgid "Claude izinleri"
+msgstr "Claude permissions"
+
+#: ui/pages.slint
+msgid "Kartta İzin ver / Reddet"
+msgstr "Allow / Deny on the card"
+
+#: ui/pages.slint
+msgid "Bekleme"
+msgstr "Wait"
+
+#: ui/pages.slint
+msgid "Sonra Claude sorar"
+msgstr "Then Claude asks"
+
+#: ui/pages.slint
+msgid "Sabah aç"
+msgstr "Open in the morning"
+
+#: ui/pages.slint
+msgid "Günün ilk kilit açılışında"
+msgstr "At the day's first unlock"
+
+#: ui/pages.slint
+msgid "Adın"
+msgstr "Your name"
+
+#: ui/pages.slint
+msgid "Selamlamada"
+msgstr "In the greeting"
+
+#: ui/pages.slint
+msgid "Ad"
+msgstr "Name"
+
+#: ui/pages.slint
+msgid "Boşta göster"
+msgstr "Show when idle"
+
+#: ui/pages.slint
+msgid "Etkinlik yokken pil gizlenmez"
+msgstr "The pill stays when nothing's on"
+
+#: ui/pages.slint
+msgid "Hep göster"
+msgstr "Always show"
+
+#: ui/pages.slint
+msgid "Diğerlerinin arkasında, yığında"
+msgstr "Behind the others, in the stack"
+
+#: ui/pages.slint
+msgid "Hava efektleri"
+msgstr "Weather effects"
+
+#: ui/pages.slint
+msgid "Kar, yağmur, güneş, yıldız"
+msgstr "Snow, rain, sun, stars"
+
+#: ui/pages.slint
+msgid "Konumumu kullan"
+msgstr "استخدام موقعي"
+
+#: ui/pages.slint
+msgid "Seçili şehir öncelikli"
+msgstr "The picked city comes first"
+
+#: ui/pages.slint
+msgid "Yağmur uyarısı"
+msgstr "Rain warning"
+
+#: ui/pages.slint
+msgid "Başlamadan önce bir an"
+msgstr "A moment before it starts"
+
+#: ui/pages.slint
+msgid "Bir şehir seç"
+msgstr "Pick a city"
+
+#: ui/pages.slint
+msgid "Hava uyarıları"
+msgstr "Weather alerts"
+
+#: ui/pages.slint
+msgid "Fırtına, rüzgâr, sıcak, don, hava kalitesi"
+msgstr "Storm, wind, heat, frost, air quality"
+
+#: ui/pages.slint
+msgid "2 an · tıkla: aç / kapat"
+msgstr "2 moments · click: on / off"
+
+#: ui/pages.slint
+msgid "İndirmeler"
+msgstr "Downloads"
+
+#: ui/pages.slint
+msgid "ilerleme, hız"
+msgstr "progress, speed"
+
+#: ui/pages.slint
+msgid "Oyun süresi"
+msgstr "Play time"
+
+#: ui/pages.slint
+msgid "oynarken ve sonra"
+msgstr "while playing and after"
+
+#: ui/pages.slint
+msgid "Kütüphaneler"
+msgstr "Libraries"
+
+#: ui/pages.slint
+msgid "bu bilgisayarda"
+msgstr "on this PC"
+
+#: ui/pages.slint
+msgid "bulunamadı"
+msgstr "not found"
+
+#: ui/pages.slint
+msgid "Mağazalar"
+msgstr "Stores"
+
+#: ui/pages.slint
+msgid "Kayıt defteri ve kütüphane dosyaları"
+msgstr "The registry and library files"
+
+#: ui/pages.slint
+msgid "Yeni Epic launcher'ın klasörü"
+msgstr "The new Epic launcher's folder"
+
+#: ui/pages.slint
+msgid "İlerleme, hız ve duraklatma"
+msgstr "Progress, speed and pause"
+
+#: ui/pages.slint
+msgid "Tam ekran değilken pilde"
+msgstr "In the pill when not full screen"
+
+#: ui/pages.slint
+msgid "Tam ekran"
+msgstr "ملء الشاشة"
+
+#: ui/pages.slint
+msgid "Oyun içi ada"
+msgstr "In-game island"
+
+#: ui/pages.slint
+msgid "Acil anlar üstte, tıklamayı geçirir"
+msgstr "Urgent moments on top, clicks pass through"
+
+#: ui/pages.slint
+msgid "Henüz ekran süresi yok"
+msgstr "No screen time yet"
+
+#: ui/pages.slint
+msgid "uygulamalar öndeyken sayılır"
+msgstr "apps count while in front"
+
+#: ui/pages.slint
+msgid "Sınır yok"
+msgstr "No limit"
+
+#: ui/pages.slint
+msgid "1 sa"
+msgstr "1 h"
+
+#: ui/pages.slint
+msgid "2 sa"
+msgstr "2 h"
+
+#: ui/pages.slint
+msgid "3 sa"
+msgstr "3 h"
+
+#: ui/pages.slint
+msgid "4 sa"
+msgstr "4 h"
+
+#: ui/pages.slint
+msgid "Ekran süresini say"
+msgstr "Count screen time"
+
+#: ui/pages.slint
+msgid "Bu bilgisayarda kalır, bir hafta"
+msgstr "Stays on this PC, for a week"
+
+#: ui/pages.slint
+msgid "Now Brief'te göster"
+msgstr "Show in Now Brief"
+
+#: ui/pages.slint
+msgid "Dünün ya da bugünün toplamı"
+msgstr "Yesterday's or today's total"
+
+#: ui/pages.slint
+msgid "Sınırlar"
+msgstr "Limits"
+
+#: ui/pages.slint
+msgid "Sınır uyarıları"
+msgstr "Limit alerts"
+
+#: ui/pages.slint
+msgid "Sınırı geçince pilde bir an"
+msgstr "A moment in the pill past a limit"
+
+#: ui/pills.slint
+msgid " · Şarj oluyor"
+msgstr " · Charging"
+
+#: ui/pills.slint
+msgid " · Kutu %60"
+msgstr " · Case 60%"
+
+#: ui/pills.slint
+msgid " · Çar 21 Eki · 18°"
+msgstr " · Wed 21 Oct · 18°"
+
+#: ui/pills.slint
+msgid " · Çar 21 Eki"
+msgstr " · Wed 21 Oct"
+
+#: ui/pills.slint
+msgid " · %48 · 18 MB/sn"
+msgstr " · 48% · 18 MB/s"
+
+#: ui/pills.slint
+msgid " · 2 sa 14 dk oynadın"
+msgstr " · Played 2 h 14 min"
+
+#: ui/settings.slint
+msgid "Now Bar Ayarları"
+msgstr "إعدادات Now Bar"
+
+#: ui/settings.slint
+msgid "Aç"
+msgstr "فتح"
+
+#: ui/settings.slint
+msgid "Takip et"
+msgstr "متابعة"
+
+#: ui/settings.slint
+msgid "Takım ara…"
+msgstr "Search teams…"
+
+#: ui/settings.slint
+msgid "Uygulama ekle, ör. vlc.exe"
+msgstr "Add an app, e.g. vlc.exe"
+
+#: ui/settings.slint
+msgid "Ayar ara…"
+msgstr "البحث في الإعدادات…"
+
+#: ui/settings.slint
+msgid "Kaydedildi"
+msgstr "تم الحفظ"
+
+#: ui/settings.slint
+msgid "Değişiklikler anında uygulanır"
+msgstr "تُطبّق التغييرات فورًا"
+
+#: ui/settings.slint
+msgid "Açık"
+msgstr "تشغيل"
+
+#: ui/settings.slint
+msgid "Görünüm"
+msgstr "المظهر"
+
+#: ui/settings.slint
+msgid "Genel"
+msgstr "عام"
+
+#: ui/settings.slint
+msgid "Etkinlikler"
+msgstr "الأنشطة"
+
+#: ui/settings.slint
+msgid "Oyunlar"
+msgstr "الألعاب"
+
+#: ui/settings.slint
+msgid "Hakkında"
+msgstr "حول التطبيق"
+
+#: ui/settings.slint
+msgid " ayar"
+msgstr " settings"
+
+#: ui/settings.slint
+msgid "başka bir kelime dene"
+msgstr "try another word"
+
+#: ui/settings.slint
+msgid "Eylemler"
+msgstr "Actions"
+
+#: ui/settings.slint
+msgid "Ayar dosyasını aç"
+msgstr "Open the settings file"
+
+#: ui/settings.slint
+msgid "Günlüğü aç"
+msgstr "Open the log"
+
+#: ui/settings.slint
+msgid "Son silineni geri al"
+msgstr "Undo the last removal"
+
+#: ui/settings.slint
+msgid "Varsayılanlara dönülsün mü?"
+msgstr "Reset to defaults?"
+
+#: ui/settings.slint
+msgid "Bütün ayarlar ilk hallerine döner; takip ettiğin takımlar, gizlediğin uygulamalar ve istisnalar da silinir."
+msgstr "Every setting goes back to its default; the teams you follow, the apps you hid and the exceptions are removed too."
+
+#: ui/settings.slint
+msgid "Vazgeç"
+msgstr "Cancel"
+
+#: src/main.rs
+msgid "Claude Code hook'ları kuruldu. Yeni oturumlarda pilde görünür."
+msgstr "Claude Code hooks installed. New sessions show in the pill."
+
+#: src/main.rs
+msgid "Claude Code hook'ları kaldırıldı."
+msgstr "Claude Code hooks removed."
+
+#: src/main.rs
+msgid "Kullanım: nowbar.exe claude-hooks install | remove"
+msgstr "Usage: nowbar.exe claude-hooks install | remove"
+
+#: src/main.rs
+msgid "Claude Code ayarları yazılamadı: {}"
+msgstr "Couldn't write Claude Code's settings: {}"
+
+#: src/main.rs
+msgid "Claude Code ayarlarındaki \"hooks\" alanı tanınmadı; dosyaya dokunulmadı."
+msgstr "Claude Code's settings have a \"hooks\" field Now Bar doesn't recognise; the file was left as it was."
+
+#: src/main.rs
+msgid "Now Bar açılamadı: {}\nAyrıntılar: {}"
+msgstr "Now Bar couldn't start: {}\nDetails: {}"
+
+#: src/settings_ui.rs
+msgid "Galaxy Buds"
+msgstr "Galaxy Buds"
+
+#: src/settings_ui.rs
+msgid "Yükseklik 32 DIP"
+msgstr "Height 32 DIP"
+
+#: src/settings_ui.rs
+msgid "Görev çubuğunun ortasından sola ya da sağa"
+msgstr "Left or right of the taskbar's centre"
+
+#: src/settings_ui.rs
+msgid "Zemin opaklığı"
+msgstr "Background opacity"
+
+#: src/settings_ui.rs
+msgid "Zamanlayıcı, kronometre, Buds ve maç pillerinde; medya pili kapağın renginde kalır"
+msgstr "In the timer, stopwatch, Buds and match pills; the media pill keeps the cover's color"
+
+#: src/settings_ui.rs
+msgid "Arkadaki etkinlikleri göster"
+msgstr "عرض الأنشطة في الخلفية"
+
+#: src/settings_ui.rs
+msgid "Öndeki pilin sağından taşan ince şeritler"
+msgstr "Thin slivers peeking out right of the front pill"
+
+#: src/settings_ui.rs
+msgid "Vurgu rengi duvar kâğıdının renginden gelir; gri bir duvar kâğıdında seçtiğin renk"
+msgstr "The accent comes from the wallpaper's color; on a gray wallpaper, the color you picked"
+
+#: src/settings_ui.rs
+msgid "Zamanlayıcı, kronometre ve seçici"
+msgstr "Timer, stopwatch and picker"
+
+#: src/settings_ui.rs
+msgid "Medya pili ve kartı albüm kapağının rengini alır; kapalıyken uygulamanın rengini"
+msgstr "The media pill and card take the album cover's color; when off, the app's"
+
+#: src/settings_ui.rs
+msgid "Kompakt ya da büyük"
+msgstr "Compact or large"
+
+#: src/settings_ui.rs
+msgid "Kartın arkasındaki masaüstü bulanıklaşır"
+msgstr "The desktop behind the card blurs"
+
+#: src/settings_ui.rs
+msgid "Malzeme koyuluğu"
+msgstr "Material darkness"
+
+#: src/settings_ui.rs
+msgid "Bulanık zeminin ne kadar karartılacağı"
+msgstr "How dark the blurred background gets"
+
+#: src/settings_ui.rs
+msgid "Renk doygunluğu"
+msgstr "Color saturation"
+
+#: src/settings_ui.rs
+msgid "Bulanık zeminin renk canlılığı"
+msgstr "How vivid the blurred background's colors are"
+
+#: src/settings_ui.rs
+msgid "Pilin büyüyüp küçülmesi, kartın açılması, içerik geçişleri"
+msgstr "The pill growing and shrinking, the card opening, content changes"
+
+#: src/settings_ui.rs
+msgid "Pile sığmayan şarkı adı"
+msgstr "A song title too long for the pill"
+
+#: src/settings_ui.rs
+msgid "Kayan başlığın hızı"
+msgstr "How fast the title scrolls"
+
+#: src/settings_ui.rs
+msgid "Otomatik: Windows'unki; Türkçe ya da İngilizce"
+msgstr "Automatic: Windows' own; Turkish or English"
+
+#: src/settings_ui.rs
+msgid "Oturum açınca Now Bar kendiliğinden çalışır"
+msgstr "Now Bar starts by itself when you sign in"
+
+#: src/settings_ui.rs
+msgid "Zamanlayıcı seçicisini açar"
+msgstr "Opens the timer picker"
+
+#: src/settings_ui.rs
+msgid "Tepsi simgesine sol tık"
+msgstr "Left click on the tray icon"
+
+#: src/settings_ui.rs
+msgid "Zamanlayıcı seçicisi ya da ayarlar"
+msgstr "The timer picker or the settings"
+
+#: src/settings_ui.rs
+msgid "Kart ve etkileşim"
+msgstr "Card and interaction"
+
+#: src/settings_ui.rs
+msgid "Fare ayrılınca kartı kapat"
+msgstr "Close the card when the mouse leaves"
+
+#: src/settings_ui.rs
+msgid "Fare karttan uzaklaşınca kart kapanır"
+msgstr "The card closes when the mouse moves away"
+
+#: src/settings_ui.rs
+msgid "Kapanma gecikmesi"
+msgstr "Close delay"
+
+#: src/settings_ui.rs
+msgid "Fare ayrıldıktan sonra kartın kapanma süresi"
+msgstr "How long the card waits to close after the mouse leaves"
+
+#: src/settings_ui.rs
+msgid "Tekerlek ve kaydırma etkinlik değiştirir"
+msgstr "Wheel and scrolling switch activities"
+
+#: src/settings_ui.rs
+msgid "Pilin ve kartın üstünde; dokunmatik yüzeyde iki parmakla"
+msgstr "Over the pill and the card; two fingers on a touchpad"
+
+#: src/settings_ui.rs
+msgid "Seçtiğim etkinlik önde kalsın"
+msgstr "Keep the activity I pick in front"
+
+#: src/settings_ui.rs
+msgid "Tekerlekle öne aldığın etkinlik yeni bir şey olana dek önde kalır"
+msgstr "The activity you bring forward with the wheel stays in front until something new happens"
+
+#: src/settings_ui.rs
+msgid "Tema"
+msgstr "المظهر"
+
+#: src/settings_ui.rs
+msgid "Pil ve kartlar her zaman koyudur"
+msgstr "The pill and cards are always dark"
+
+#: src/settings_ui.rs
+msgid "Medyayı göster"
+msgstr "Show media"
+
+#: src/settings_ui.rs
+msgid "Çalan şarkı pilde; tıklayınca medya kartı"
+msgstr "The playing song in the pill; click for the media card"
+
+#: src/settings_ui.rs
+msgid "Başlık, düğmelere kadar uzar"
+msgstr "The title stretches up to the buttons"
+
+#: src/settings_ui.rs
+msgid "Başlığın yanında, soluk"
+msgstr "Beside the title, dimmed"
+
+#: src/settings_ui.rs
+msgid "Kapakla başlık arasındaki çubuklar sesle birlikte oynar"
+msgstr "Bars between the cover and the title move with the sound"
+
+#: src/settings_ui.rs
+msgid "Dalgalı ilerleme çubuğu"
+msgstr "Wavy progress bar"
+
+#: src/settings_ui.rs
+msgid "Çalarken dalgalanır; kapalıyken düz çizgi"
+msgstr "Waves while playing; a straight line when off"
+
+#: src/settings_ui.rs
+msgid "Kartta «Sözler» çipi; eşzamanlı sözler lrclib.net'ten gelir"
+msgstr "A «Lyrics» chip on the card; synced lyrics come from lrclib.net"
+
+#: src/settings_ui.rs
+msgid "Davranış"
+msgstr "Behavior"
+
+#: src/settings_ui.rs
+msgid "Orta tıkla oynat/durdur"
+msgstr "Middle-click to play/pause"
+
+#: src/settings_ui.rs
+msgid "Medya pilinin üstünde farenin orta tuşu"
+msgstr "The middle mouse button over the media pill"
+
+#: src/settings_ui.rs
+msgid "Duraklatınca pilde kalma süresi"
+msgstr "How long it stays in the pill when paused"
+
+#: src/settings_ui.rs
+msgid "Sonra pil kaybolur; çalınca geri gelir"
+msgstr "Then the pill goes; it comes back when it plays"
+
+#: src/settings_ui.rs
+msgid "Pilde gösterilecek medya uygulamaları"
+msgstr "Media apps to show in the pill"
+
+#: src/settings_ui.rs
+msgid "Ses çıkışı seçicisi"
+msgstr "Sound output picker"
+
+#: src/settings_ui.rs
+msgid "Medya kartındaki çıkış sayfasında görünen cihazlar"
+msgstr "Devices shown on the media card's output page"
+
+#: src/settings_ui.rs
+msgid "Geri sayım; süre dolunca alarm"
+msgstr "Counts down; an alarm when time's up"
+
+#: src/settings_ui.rs
+msgid "İleri sayım ve tur"
+msgstr "Counts up, with laps"
+
+#: src/settings_ui.rs
+msgid "Windows'un alarm ve zil sesleri"
+msgstr "Windows' alarm and ring sounds"
+
+#: src/settings_ui.rs
+msgid "Süre dolunca kart kendiliğinden açılır"
+msgstr "The card opens by itself when time's up"
+
+#: src/settings_ui.rs
+msgid "Biten zamanlayıcının kartında"
+msgstr "On a finished timer's card"
+
+#: src/settings_ui.rs
+msgid "Seçicideki çipler, dakika olarak (1–180)"
+msgstr "The picker's chips, in minutes (1–180)"
+
+#: src/settings_ui.rs
+msgid "Kartta 00:12,4 gibi; kapalıyken saniyede bir güncellenir"
+msgstr "Like 00:12.4 on the card; when off, it updates once a second"
+
+#: src/settings_ui.rs
+msgid "Buds'ı göster"
+msgstr "Show Buds"
+
+#: src/settings_ui.rs
+msgid "Kulaklığın pili; bağlanınca ve pil azalınca pilde"
+msgstr "Earbuds' battery; in the pill on connect and when low"
+
+#: src/settings_ui.rs
+msgid "Hangi Buds: bağlanan ilki ya da seçilen eşleşmiş cihaz"
+msgstr "Which Buds: the first to connect, or a paired device you pick"
+
+#: src/settings_ui.rs
+msgid "Düşük pil uyarısı"
+msgstr "Low battery warning"
+
+#: src/settings_ui.rs
+msgid "Bunun altında Buds öne gelir, halkalar kırmızı olur"
+msgstr "Below this the Buds come forward and the rings turn red"
+
+#: src/settings_ui.rs
+msgid "Kulaklık bağlanınca pil kısa süre önde"
+msgstr "The pill comes forward briefly when the earbuds connect"
+
+#: src/settings_ui.rs
+msgid "Bir kulaklık çıkınca müzik durur, geri takınca devam eder"
+msgstr "Music pauses when a bud comes out and plays again when it goes back"
+
+#: src/settings_ui.rs
+msgid "Canlı maçı göster"
+msgstr "Show live matches"
+
+#: src/settings_ui.rs
+msgid "Yalnızca takip ettiğin takımlar"
+msgstr "Only the teams you follow"
+
+#: src/settings_ui.rs
+msgid "Sonuçlar ESPN'den gelir"
+msgstr "Results come from ESPN"
+
+#: src/settings_ui.rs
+msgid "Takip edilenler"
+msgstr "Followed"
+
+#: src/settings_ui.rs
+msgid "Takip edilen takımlar"
+msgstr "Followed teams"
+
+#: src/settings_ui.rs
+msgid "Takip ettiğin takımlar"
+msgstr "The teams you follow"
+
+#: src/settings_ui.rs
+msgid "Maçtan önce göster"
+msgstr "Show before the match"
+
+#: src/settings_ui.rs
+msgid "Pilde başlama saatiyle"
+msgstr "In the pill with the kick-off time"
+
+#: src/settings_ui.rs
+msgid "Maç bitince kalma süresi"
+msgstr "How long it stays after the match"
+
+#: src/settings_ui.rs
+msgid "Maç sonu pilde kalma süresi"
+msgstr "How long the final score stays in the pill"
+
+#: src/settings_ui.rs
+msgid "Rakip golünde de an göster"
+msgstr "A moment for the opponent's goals too"
+
+#: src/settings_ui.rs
+msgid "Pil kısa süre büyür, parıltı olmadan"
+msgstr "The pill grows briefly, without the glow"
+
+#: src/settings_ui.rs
+msgid "Takımın gol atınca kısa bir ses çalar"
+msgstr "A short sound plays when your team scores"
+
+#: src/settings_ui.rs
+msgid "Pil ve kartlar, tam ekran bir uygulama öndeyken gizlenir"
+msgstr "The pill and cards hide while a full-screen app is in front"
+
+#: src/settings_ui.rs
+msgid "Bu uygulamalar tam ekran olsa da Now Bar görünür kalır"
+msgstr "Now Bar stays visible even when these apps are full screen"
+
+#: src/settings_ui.rs
+msgid "Yeni sürüm varsa indirir, doğrular ve Now Bar'ı yeniden başlatır"
+msgstr "Downloads a new version if there is one, checks it and restarts Now Bar"
+
+#: src/settings_ui.rs
+msgid "Günde bir kez GitHub'a yeni sürüm var mı diye sorar"
+msgstr "Asks GitHub once a day whether there's a new version"
+
+#: src/settings_ui.rs
+msgid "Now Bar'ın günlük dosyası"
+msgstr "Now Bar's log file"
+
+#: src/settings_ui.rs
+msgid "settings.json"
+msgstr "settings.json"
+
+#: src/settings_ui.rs
+msgid "Varsayılanlara dön"
+msgstr "Reset to defaults"
+
+#: src/settings_ui.rs
+msgid "Takımlar ve listeler de sıfırlanır"
+msgstr "Teams and lists are reset too"
+
+#: src/settings_ui.rs
+msgid "Ses değişince seviye kısa bir an pilde görünür"
+msgstr "The level shows in the pill for a moment when the volume changes"
+
+#: src/settings_ui.rs
+msgid "Şarj aleti takılınca ve pil azalınca pil kısa bir an öne gelir"
+msgstr "The pill comes forward for a moment when the charger is plugged in and when the battery is low"
+
+#: src/settings_ui.rs
+msgid "Dizüstünün pili bunun altına inince bir kez uyarır"
+msgstr "Warns once when the laptop's battery drops below this"
+
+#: src/settings_ui.rs
+msgid "Mikrofon ve kamera kullanımı"
+msgstr "Microphone and camera use"
+
+#: src/settings_ui.rs
+msgid "Bir uygulama mikrofonu ya da kamerayı kullanırken pilde, uygulamanın adıyla"
+msgstr "In the pill, with the app's name, while an app uses the microphone or camera"
+
+#: src/settings_ui.rs
+msgid "nowbar.exe push ve Claude Code'un hook'ları pilde bir etkinlik gösterir"
+msgstr "nowbar.exe push and Claude Code's hooks show an activity in the pill"
+
+#: src/settings_ui.rs
+msgid "Ekran görüntüsünü göster"
+msgstr "Show screenshots"
+
+#: src/settings_ui.rs
+msgid "ShareX ya da Ekran Alıntısı Aracı yeni bir görüntü kaydedince pilde kısa bir an; sürükleyip atabilirsin"
+msgstr "A moment in the pill when ShareX or the Snipping Tool saves a new image; you can drag it out"
+
+#: src/settings_ui.rs
+msgid "Ekran görüntülerini rafa ekle"
+msgstr "Add screenshots to the shelf"
+
+#: src/settings_ui.rs
+msgid "Yeni görüntüler rafa düşer, sonra sürükleyip atmak için"
+msgstr "New images land on the shelf, to drag and drop later"
+
+#: src/settings_ui.rs
+msgid "Claude izin isteyince kartında İzin ver / Reddet çıkar"
+msgstr "When Claude asks for permission, its card shows Allow / Deny"
+
+#: src/settings_ui.rs
+msgid "İzin için bekleme"
+msgstr "Waiting for permission"
+
+#: src/settings_ui.rs
+msgid "Kart bu kadar cevap bekler, sonra Claude kendi penceresinde sorar"
+msgstr "The card waits this long for an answer, then Claude asks in its own window"
+
+#: src/settings_ui.rs
+msgid "Diğer kulaklıkları göster"
+msgstr "Show other headphones"
+
+#: src/settings_ui.rs
+msgid "Galaxy Buds dışındaki Bluetooth kulaklıklar, pilleriyle"
+msgstr "Bluetooth headphones other than Galaxy Buds, with their battery"
+
+#: src/settings_ui.rs
+msgid "Now Brief"
+msgstr "Now Brief"
+
+#: src/settings_ui.rs
+msgid "Sabah Now Brief"
+msgstr "Morning Now Brief"
+
+#: src/settings_ui.rs
+msgid "Günün ilk kilit açılışında günaydın kartı: hava, maçlar, müzik"
+msgstr "A good-morning card at the day's first unlock: weather, matches, music"
+
+#: src/settings_ui.rs
+msgid "Selamlamadaki adın"
+msgstr "Your name in the greeting"
+
+#: src/settings_ui.rs
+msgid "Boşsa Windows hesabındaki ad"
+msgstr "When empty, the name on your Windows account"
+
+#: src/settings_ui.rs
+msgid "Boşta saat ve hava"
+msgstr "Clock and weather when idle"
+
+#: src/settings_ui.rs
+msgid "Etkinlik yokken pil gizlenmez; saati, tarihi ve havayı gösterir"
+msgstr "The pill stays when nothing's on, showing the time, date and weather"
+
+#: src/settings_ui.rs
+msgid "Havayı hep göster"
+msgstr "Always show the weather"
+
+#: src/settings_ui.rs
+msgid "Başka etkinlikler varken hava yığının en arkasında durur"
+msgstr "With other activities on, the weather waits at the back of the stack"
+
+#: src/settings_ui.rs
+msgid "Kar, yağmur, güneş ve yıldızlar havanın arkasında hareket eder"
+msgstr "Snow, rain, sun and stars move behind the weather"
+
+#: src/settings_ui.rs
+msgid "Şehrinde yağmur ya da kar başlamadan önce pil bir an öne gelir"
+msgstr "The pill comes forward for a moment before rain or snow starts where you are"
+
+#: src/settings_ui.rs
+msgid "Fırtına, kuvvetli rüzgâr, aşırı sıcak, don ve kötü hava kalitesi öncesinde pil bir an öne gelir"
+msgstr "The pill comes forward for a moment before storms, strong wind, extreme heat, frost and poor air quality"
+
+#: src/settings_ui.rs
+msgid "Steam ve Epic'te ilerleme, hız ve duraklatma; bitince Güncellendi"
+msgstr "Progress, speed and pause on Steam and Epic; Updated when done"
+
+#: src/settings_ui.rs
+msgid "Oyun açıkken pilde; kapanınca ne kadar oynadığın"
+msgstr "In the pill while a game runs; when it closes, how long you played"
+
+#: src/settings_ui.rs
+msgid "Tam ekranda gol, Claude'un izni, biten zamanlayıcı gibi acil anlar ekranın üstünde birkaç saniye; tıklamayı engellemez"
+msgstr "In full screen, urgent moments like a goal, Claude's permission or a finished timer show at the top for a few seconds; clicks pass through"
+
+#: src/settings_ui.rs
+msgid "Steam"
+msgstr "Steam"
+
+#: src/settings_ui.rs
+msgid "Steam'in kayıt defteri ve kütüphane dosyaları"
+msgstr "Steam's registry and library files"
+
+#: src/settings_ui.rs
+msgid "Epic Games"
+msgstr "Epic Games"
+
+#: src/settings_ui.rs
+msgid "Ekran süresi"
+msgstr "Screen time"
+
+#: src/settings_ui.rs
+msgid "Hangi uygulamanın ne kadar önde kaldığı; bu bilgisayarda kalır"
+msgstr "How long each app was in front; it stays on this PC"
+
+#: src/settings_ui.rs
+msgid "Brief'te dünün ya da bugünün ekran süresi"
+msgstr "Yesterday's or today's screen time in the Brief"
+
+#: src/settings_ui.rs
+msgid "Uygulama sınırları"
+msgstr "App limits"
+
+#: src/settings_ui.rs
+msgid "Bir uygulama günlük sınırını geçince pilde bir an"
+msgstr "A moment in the pill when an app passes its daily limit"
+
+#: src/settings_ui.rs
+msgid "Şehir seçilmemişse hava bilgisayarın bulunduğu yerin; konum Windows'tan, yer adı OpenStreetMap'ten"
+msgstr "Without a picked city, the weather where the PC is; the location from Windows, the place's name from OpenStreetMap"
+
+#: src/settings_ui.rs
+msgid "Hava için şehir"
+msgstr "City for the weather"
+
+#: src/settings_ui.rs
+msgid "Sıcaklık ve gökyüzü bu şehrin; veriler Open-Meteo'dan gelir"
+msgstr "The temperature and sky are this city's; the data comes from Open-Meteo"
+
+#: src/settings_ui.rs
+msgid "Geçersiz ad"
+msgstr "Invalid name"
+
+#: src/settings_ui.rs
+msgid "{} zaten listede"
+msgstr "{} is already on the list"
+
+#: src/settings_ui.rs
+msgid "Adsız cihaz"
+msgstr "Unnamed device"
+
+#: src/settings_ui.rs
+msgid "{} · eşleşmemiş"
+msgstr "{} · not paired"
+
+#: src/update.rs
+msgid "{} · denetlenmedi"
+msgstr "{} · not checked"
+
+#: src/update.rs
+msgid "{} hazır · şimdiki {}"
+msgstr "{} ready · now {}"
+
+#: src/update.rs
+msgid "{} · güncel"
+msgstr "{} · up to date"
+
+#: src/bin/nowbar-settings.rs
+msgid "Şu an çalıyor"
+msgstr "Playing now"
+
+#: src/bin/nowbar-settings.rs
+msgid "Sürüm {}"
+msgstr "Version {}"
+
+#: src/platform/tray.rs
+msgid "Güncelle: {}"
+msgstr "Update: {}"
+
+#: src/platform/tray.rs
+msgid "Maç sayfasını aç"
+msgstr "Open the match page"
+
+#: src/platform/tray.rs
+msgid "Maçı gizle"
+msgstr "Hide the match"
+
+#: src/platform/tray.rs
+msgid "Zamanlayıcı başlat"
+msgstr "بدء المؤقت"
+
+#: src/platform/tray.rs
+msgid "Kronometre başlat"
+msgstr "بدء ساعة الإيقاف"
+
+#: src/platform/tray.rs
+msgid "Ayarlar…"
+msgstr "الإعدادات…"
+
+#: src/platform/tray.rs
+msgid "Çıkış"
+msgstr "خروج"
+
+#: ui/pages.slint
+msgid "Ortada"
+msgstr "في الوسط"
+
+#: ui/pages.slint
+msgid "{} dk {} sn"
+msgstr "{} min {} s"
+
+#: ui/pages.slint
+msgid "Hemen"
+msgstr "At once"
+
+#: ui/pages.slint
+msgid "Seçiciyi açar"
+msgstr "Opens the picker"
+
+#: ui/pages.slint
+msgid "Ayarları açar"
+msgstr "Opens settings"
+
+#: src/activities/basketball.rs
+msgid "DA"
+msgstr "HT"
+
+#: src/activities/basketball.rs
+msgid "Ç{} sonu"
+msgstr "End of Q{}"
+
+#: src/activities/basketball.rs
+msgid "Ç{} {}"
+msgstr "Q{} {}"
+
+#: src/activities/basketball.rs
+msgid "UZ{}"
+msgstr "OT{}"
+
+#: src/activities/basketball.rs
+msgid "UZ"
+msgstr "OT"
+
+#: src/activities/basketball.rs
+msgid "{} sonu"
+msgstr "End of {}"
+
+#: src/activities/basketball.rs
+msgid "{}. çeyrek sonu"
+msgstr "End of Q{}"
+
+#: src/activities/basketball.rs
+msgid "{}. çeyrek · {}"
+msgstr "Q{} · {}"
+
+#: src/activities/basketball.rs
+msgid "{}. uzatma"
+msgstr "OT{}"
+
+#: src/activities/basketball.rs
+msgid "Uzatma"
+msgstr "Overtime"
+
+#: src/activities/football.rs
+msgctxt "maç"
+msgid "UZ"
+msgstr "ET"
+
+#: src/activities/football.rs
+msgid "Şampiyonlar Ligi"
+msgstr "Champions League"
+
+#: src/activities/football.rs
+msgid "Avrupa Ligi"
+msgstr "Europa League"
+
+#: src/activities/football.rs
+msgid "Konferans Ligi"
+msgstr "Conference League"
+
+#: src/activities/football.rs
+msgid "UEFA Süper Kupa"
+msgstr "UEFA Super Cup"
+
+#: src/activities/football.rs
+msgid "UEFA Uluslar Ligi"
+msgstr "UEFA Nations League"
+
+#: src/activities/football.rs
+msgid "Dünya Kupası Elemeleri"
+msgstr "World Cup qualifiers"
+
+#: src/activities/football.rs
+msgid "Dünya Kupası"
+msgstr "World Cup"
+
+#: src/activities/football.rs
+msgid "EURO Elemeleri"
+msgstr "EURO qualifiers"
+
+#: src/activities/football.rs
+msgid "Hazırlık Maçı"
+msgstr "Friendly"
+
+#: src/activities/football.rs
+msgid "{} · Ön Eleme"
+msgstr "{} · Qualifying"
+
+#: src/activities/football.rs
+msgid "İY"
+msgstr "HT"
+
+#: src/activities/football.rs
+msgid "MS"
+msgstr "FT"
+
+#: src/activities/football.rs
+msgid "ERT"
+msgstr "PST"
+
+#: src/activities/football.rs
+msgid "İPT"
+msgstr "CAN"
+
+#: src/activities/football.rs
+msgid "TAT"
+msgstr "ABD"
+
+#: src/render/card.rs
+msgid "ŞL"
+msgstr "CL"
+
+#: src/render/card.rs
+msgid "AL"
+msgstr "EL"
+
+#: src/render/card.rs
+msgid "KL"
+msgstr "ECL"
+
+#: setup/src/install.rs
+msgid "Bu setup dosyasız derlendi (NOWBAR_SETUP_PAYLOAD olmadan)."
+msgstr "This setup was built without files (no NOWBAR_SETUP_PAYLOAD)."
+
+#: setup/src/install.rs
+msgid "Bu klasöre yazılamıyor; başka bir yer seç."
+msgstr "Can't write to this folder; pick another place."
+
+#: setup/src/install.rs
+msgid "Hazırlanıyor"
+msgstr "Getting ready"
+
+#: setup/src/install.rs
+msgid "Now Bar kapatılıyor"
+msgstr "Closing Now Bar"
+
+#: setup/src/install.rs
+msgid "Dosyalar kopyalanıyor"
+msgstr "Copying files"
+
+#: setup/src/install.rs
+msgid "Kaydediliyor"
+msgstr "Registering"
+
+#: setup/src/install.rs
+msgid "Windows'la başlatma"
+msgstr "Starting with Windows"
+
+#: setup/src/install.rs
+msgid "Claude Code bağlanamadı: ayar dosyası açık ya da okunamıyor."
+msgstr "Couldn't connect Claude Code: its settings file is open or can't be read."
+
+#: setup/src/install.rs
+msgid "Now Bar başlatılıyor"
+msgstr "Starting Now Bar"
+
+#: setup/src/install.rs
+msgid "Now Bar açılmadı. Yeniden başlatıp tekrar dene."
+msgstr "Now Bar didn't start. Restart and try again."
+
+#: setup/src/install.rs
+msgid "Ayarlar yazılamadı: {}"
+msgstr "Couldn't write the settings: {}"
+
+#: setup/src/install.rs
+msgid "Windows'la başlatma ayarlanamadı: {}"
+msgstr "Couldn't set it to start with Windows: {}"
+
+#: setup/src/install.rs
+msgid "Now Bar'ın dosyaları değiştirilemedi; Now Bar'ı kapatıp tekrar dene."
+msgstr "Couldn't replace Now Bar's files; close Now Bar and try again."
+
+#: setup/src/main.rs
+msgid "Kurulum dosyası bozuk; yeniden indir."
+msgstr "The setup file is damaged; download it again."
+
+#: setup/src/main.rs
+msgid "Kurulum penceresi açılamadı: {}"
+msgstr "The setup window couldn't open: {}"
+
+#: setup/src/main.rs
+msgid "Now Bar'ı kaldır"
+msgstr "Uninstall Now Bar"
+
+#: setup/src/main.rs
+msgid "Now Bar, kısayolları ve Claude Code bağlantısı kaldırılacak."
+msgstr "Now Bar, its shortcuts and its Claude Code connection will be removed."
+
+#: setup/src/main.rs
+msgid "Kaldır"
+msgstr "إزالة"
+
+#: setup/src/main.rs
+msgid "Görev çubuğunda canlı etkinlikler"
+msgstr "Live activities in the taskbar"
+
+#: setup/src/main.rs
+msgid "Kur"
+msgstr "Install"
+
+#: setup/src/main.rs
+msgid "v{} kurulu · v{} sürümüne güncellenecek"
+msgstr "v{} installed · will update to v{}"
+
+#: setup/src/main.rs
+msgid "Bu sürüm zaten kurulu; dosyalar yeniden yazılacak."
+msgstr "This version is already installed; its files will be written again."
+
+#: setup/src/main.rs
+msgid "Onar"
+msgstr "Repair"
+
+#: setup/src/main.rs
+msgid "Daha yeni bir sürüm kurulu (v{})."
+msgstr "A newer version is installed (v{})."
+
+#: setup/src/main.rs
+msgid "Yine de kur"
+msgstr "Install anyway"
+
+#: setup/src/main.rs
+msgid "Now Bar görev çubuğunda. Her şeyi ayarlar penceresinden değiştirebilirsin."
+msgstr "Now Bar is in the taskbar. You can change everything in its settings window."
+
+#: setup/src/main.rs
+msgid "Dosyalar yerinde; Now Bar başlatılmadı."
+msgstr "The files are in place; Now Bar wasn't started."
+
+#: setup/src/main.rs
+msgid "Kapat"
+msgstr "إغلاق"
+
+#: setup/src/main.rs
+msgid "Bitir"
+msgstr "Finish"
+
+#: setup/src/main.rs
+msgid "Tekrar dene"
+msgstr "Try again"
+
+#: setup/src/main.rs
+msgid "Now Bar kapanmadı; görev çubuğundan kapatıp tekrar dene."
+msgstr "Now Bar didn't close; quit it from the taskbar and try again."
+
+#: setup/src/main.rs
+msgid "Dosyalar siliniyor"
+msgstr "Removing files"
+
+#: setup/src/stage.rs
+msgid "Çalan şarkı, kontroller ve şarkı sözleri"
+msgstr "The playing song, controls and lyrics"
+
+#: setup/src/stage.rs
+msgid "Ne yaptığı, görev listesi ve izin istekleri"
+msgstr "What it's doing, its task list and permission requests"
+
+#: setup/src/stage.rs
+msgid "Skor, dakika ve goller anında"
+msgstr "Score, minute and goals as they happen"
+
+#: setup/src/stage.rs
+msgid "Kulaklıkların ve kutunun pili"
+msgstr "The earbuds' and the case's battery"
+
+#: setup/src/stage.rs
+msgid "Raf"
+msgstr "Shelf"
+
+#: setup/src/stage.rs
+msgid "Dosyaları bırak, sonra istediğin yere sürükle"
+msgstr "Drop files, then drag them wherever you like"
+
+#: setup/src/system.rs
+msgid "Kayıt yazılamadı: {}"
+msgstr "Couldn't write the registry: {}"
+
+#: setup/src/system.rs
+msgid "Kısayol oluşturulamadı: {}"
+msgstr "Couldn't create the shortcut: {}"
+
+#: setup/src/system.rs
+msgid "Kaldırıcı başlatılamadı: {}"
+msgstr "Couldn't start the uninstaller: {}"
+
+#: setup/src/uninstall.rs
+msgid "Kısayollar ve kayıtlar"
+msgstr "Shortcuts and registry"
+
+#: setup/src/uninstall.rs
+msgid "Bazı dosyalar silinemedi (açık olabilirler). Yeniden başlattıktan sonra klasörü elle silebilirsin."
+msgstr "Some files couldn't be removed (they may be open). After a restart you can delete the folder yourself."
+
+#: setup/ui/setup.slint
+msgid "Now Bar kurulumu"
+msgstr "Now Bar setup"
+
+#: setup/ui/setup.slint
+msgid "Windows'la başlat"
+msgstr "Start with Windows"
+
+#: setup/ui/setup.slint
+msgid "Claude Code'a bağlan"
+msgstr "Connect to Claude Code"
+
+#: setup/ui/setup.slint
+msgid "Masaüstü kısayolu"
+msgstr "Desktop shortcut"
+
+#: setup/ui/setup.slint
+msgid "Bitince ayarları aç"
+msgstr "Open settings when done"
+
+#: setup/ui/setup.slint
+msgid "Ayarlarımı da sil"
+msgstr "Delete my settings too"
+
+#: setup/ui/setup.slint
+msgid "Now Bar kaldırıldı"
+msgstr "Now Bar uninstalled"
+
+#: setup/ui/setup.slint
+msgid "Now Bar kuruldu"
+msgstr "Now Bar installed"
+
+#: setup/ui/setup.slint
+msgid "Kaldırma tamamlanamadı"
+msgstr "Uninstall couldn't finish"
+
+#: setup/ui/setup.slint
+msgid "Kurulum tamamlanamadı"
+msgstr "Setup couldn't finish"
+
+#: setup/ui/setup.slint
+msgid "Değiştir"
+msgstr "Change"
+
+#: src/render/pill.rs
+msgid "{} dosya"
+msgstr "{} files"
+
+#: ui/pages.slint
+msgid "Windows 11 gerekir"
+msgstr "Needs Windows 11"
+
+#: src/main.rs
+msgid "Now Bar, Windows 10 sürüm 1809 veya sonrasını gerektirir."
+msgstr "Now Bar needs Windows 10 version 1809 or later."
+
+#: src/render/card.rs
+msgid "Bildirim göstermek istiyor"
+msgstr "Wants to show notifications"
+
+#: src/render/card.rs
+msgid "Yalnızca güvendiğin uygulamalara izin ver."
+msgstr "Only allow apps you trust."
+
+#: src/render/card.rs
+msgid "Sustur"
+msgstr "Mute"
+
+#: src/settings_ui.rs
+msgid "Uygulama bildirimleri"
+msgstr "App notifications"
+
+#: src/settings_ui.rs
+msgid "Diğer uygulamalar 127.0.0.1:20034 üzerinden pilde bildirim gösterebilir; önce sana sorulur"
+msgstr "Other apps can show notifications in the pill through 127.0.0.1:20034; you're asked first"
+
+#: src/settings_ui.rs
+msgid "İzin verilen uygulamalar"
+msgstr "Allowed apps"
+
+#: src/settings_ui.rs
+msgid "Sorduklarında verdiğin cevaplar; tıkla: izin ver / engelle"
+msgstr "Your answers when they asked; click: allow / block"
+
+#: ui/pages.slint
+msgid " uygulama · tıkla: izin ver / engelle"
+msgstr " apps · click: allow / block"
+
+#: ui/pages.slint
+msgid "bir uygulama sorunca burada görünür"
+msgstr "an app shows here once it asks"
+
+#: ui/pages.slint
+msgid "sağdan aç"
+msgstr "turn it on at the right"
+
+#: ui/pages.slint
+msgid "İzinli"
+msgstr "Allowed"
+
+#: ui/pages.slint
+msgid "Engelli"
+msgstr "Blocked"
+
+#: ui/pages.slint
+msgid "Açıkken, izin verdiğin uygulamalar pilde bildirim gösterebilir. Hangi uygulamalara izin verdiğin ve gösterdikleri senin sorumluluğunda; Now Bar yalnızca gösterir."
+msgstr "While it's on, the apps you allow can show notifications in the pill. Which apps you allow, and what they show, is your responsibility; the Now Bar only shows it."
+
+#: setup/ui/setup.slint
+msgid "Uygulama bildirimlerini aç"
+msgstr "Turn on app notifications"
+
+#: setup/ui/setup.slint
+msgid "İzin verdiğin uygulamalar ve gösterdikleri senin sorumluluğunda"
+msgstr "The apps you allow, and what they show, are your responsibility"
+
+#: src/app.rs
+msgid "Sen yokken"
+msgstr "While you were away"
+
+#: src/settings_ui.rs
+msgid "Kilidi açınca, kilitliyken olanlar pilde bir an ve bir listede: Claude, goller, yağmur, indirmeler"
+msgstr "On unlocking, what happened while it was locked: a moment in the pill and a list: Claude, goals, rain, downloads"
+
+#: src/activities/away.rs
+msgid "1 şey"
+msgstr "1 thing"
+
+#: src/activities/away.rs
+msgid "{} şey"
+msgstr "{} things"
+
+#: src/activities/away.rs
+msgid "Claude bitti · {}"
+msgstr "Claude finished · {}"
+
+#: src/activities/away.rs
+msgid "{} bitti"
+msgstr "{} finished"
+
+#: src/activities/away.rs
+msgid "Kar başladı"
+msgstr "Snow started"
+
+#: src/activities/away.rs
+msgid "Yağmur başladı"
+msgstr "Rain started"
+
+#: src/activities/away.rs
+msgid "{} indirmesi bitti"
+msgstr "{} finished downloading"
+
+#: src/activities/away.rs
+msgid "Zamanlayıcı bitti"
+msgstr "Timer finished"
+
+#: src/activities/away.rs
+msgid "Pil {} kaldı"
+msgstr "Battery at {}"
+
+#: src/render/card.rs
+msgid "+{} daha"
+msgstr "+{} more"
+
+#: ui/pages.slint
+msgid "Kilidi açınca, kilitliyken olanlar"
+msgstr "On unlock: what happened meanwhile"
+
+#: src/app.rs
+msgid "Paylaşılamadı"
+msgstr "Couldn't share"
+
+#: src/activities/shelf.rs
+msgid "Paylaş"
+msgstr "Share"
+
+#: src/activities/shelf.rs
+msgid "Metni kopyala"
+msgstr "Copy text"
+
+#: src/activities/shelf.rs
+msgid "Küçült"
+msgstr "Shrink"
+
+#: src/activities/shelf.rs
+msgid "Zip yap"
+msgstr "Zip"
+
+#: src/app.rs
+msgid "Okunuyor…"
+msgstr "Reading…"
+
+#: src/app.rs
+msgid "Metin bulunamadı"
+msgstr "No text found"
+
+#: src/app.rs
+msgid "Kopyalandı"
+msgstr "Copied"
+
+#: src/app.rs
+msgid "Kopyalandı · {} tanıyıcı yok"
+msgstr "Copied · no {} recogniser"
+
+#: src/app.rs
+msgid "Kopyalanamadı"
+msgstr "Couldn't copy"
+
+#: src/app.rs
+msgid "Metin tanıma yok"
+msgstr "No text recognition"
+
+#: src/app.rs
+msgid "Açılamadı"
+msgstr "Couldn't open"
+
+#: src/activities/shelf_tools.rs
+msgid "küçük"
+msgstr "small"
+
+#: src/activities/shelf_tools.rs
+msgid "{} ve {} dosya"
+msgstr "{} and {} more"
+
+#: src/app.rs
+msgid "Küçültülüyor…"
+msgstr "Shrinking…"
+
+#: src/app.rs
+msgid "Sıkıştırılıyor…"
+msgstr "Zipping…"
+
+#: src/app.rs
+msgid "Zaten küçük"
+msgstr "Already small"
+
+#: src/app.rs
+msgid "Küçültülemedi"
+msgstr "Couldn't shrink"
+
+#: src/app.rs
+msgid "Zip hazır"
+msgstr "Zip ready"
+
+#: src/app.rs
+msgid "{} küçültüldü"
+msgstr "{} shrunk"
+
+#: src/app.rs
+msgid "Küçültüldü"
+msgstr "Shrunk"
+
+#: src/app.rs
+msgid "Zip yapılamadı"
+msgstr "Couldn't zip"
+
+#: src/app.rs
+msgid "Zip için çok büyük"
+msgstr "Too big for a zip"
+
+#: src/settings_ui.rs
+msgid "Pilde şarkı sözü"
+msgstr "Lyrics in the pill"
+
+#: src/settings_ui.rs
+msgid "Eşzamanlı söz varken pilde şarkının adı yerine o anki satır kayar"
+msgstr "With synced lyrics, the line on slides into the pill in place of the song's title"
+
+#: ui/pages.slint
+msgid "Şarkı sözü"
+msgstr "Lyrics"
+
+#: ui/pages.slint
+msgid "Adın yerine o anki satır"
+msgstr "The line on, in the title's place"
+
+#: src/app.rs
+msgid "Haftanın müziği · {}"
+msgstr "The week's music · {}"
+
+#: src/settings_ui.rs
+msgid "Haftanın müziği"
+msgstr "The week's music"
+
+#: src/settings_ui.rs
+msgid "En çok dinlenen şarkılar ve sanatçılar; çalanlar bu bilgisayarda sayılır, internete gitmez"
+msgstr "The tracks and artists played most; counted on this PC, nothing goes online"
+
+#: src/activities/music.rs
+msgid "1 kez"
+msgstr "1 play"
+
+#: src/activities/music.rs
+msgid "{} kez"
+msgstr "{} plays"
+
+#: src/activities/music.rs
+msgid "1 parça"
+msgstr "1 track"
+
+#: src/activities/music.rs
+msgid "{} parça"
+msgstr "{} tracks"
+
+#: src/activities/music.rs
+msgid "{} · en çok {}"
+msgstr "{} · mostly {}"
+
+#: src/render/card.rs
+msgid "Bu hafta"
+msgstr "This week"
+
+#: src/render/card.rs
+msgid "Bu hafta henüz müzik yok"
+msgstr "No music yet this week"
+
+#: ui/pages.slint
+msgid "Çalanlar bu bilgisayarda sayılır"
+msgstr "Counted on this PC"
+
+#: src/activities/transfer.rs
+msgid "Kopyalanıyor"
+msgstr "Copying"
+
+#: src/activities/transfer.rs
+msgid "Taşınıyor"
+msgstr "Moving"
+
+#: src/activities/transfer.rs
+msgid "Siliniyor"
+msgstr "Deleting"
+
+#: src/activities/transfer.rs
+msgid "Kopyalama bitti"
+msgstr "Copy finished"
+
+#: src/activities/transfer.rs
+msgid "Taşıma bitti"
+msgstr "Move finished"
+
+#: src/activities/transfer.rs
+msgid "Silme bitti"
+msgstr "Delete finished"
+
+#: src/activities/transfer.rs
+msgid "{} · 1 dk'dan az"
+msgstr "{} · under a min"
+
+#: src/settings_ui.rs
+msgid "Dosya kopyalama"
+msgstr "File copies"
+
+#: src/settings_ui.rs
+msgid "Kopyalama ilerlemesi"
+msgstr "Copy progress"
+
+#: src/settings_ui.rs
+msgid "Explorer kopyalar, taşır ya da silerken pilde yüzde ve kalan süre; penceresi küçültülse de"
+msgstr "While Explorer copies, moves or deletes, the percent and the time left in the pill; even with its window minimised"
+
+#: ui/pages.slint
+msgid "İlerlemeyi göster"
+msgstr "Show the progress"
+
+#: ui/pages.slint
+msgid "Explorer'ın penceresi küçültülse de"
+msgstr "Even with its window minimised"
+
+#: src/app.rs
+msgid "Claude Code bu bilgisayarda bulunamadı."
+msgstr "Claude Code wasn't found on this PC."
+
+#: src/app.rs
+msgid "Claude Code'a giriş yapılmamış: terminalde claude yazıp /login ile bir kez gir."
+msgstr "Claude Code isn't signed in: type claude in a terminal and sign in once with /login."
+
+#: src/app.rs
+msgid "Claude yanıt veremedi."
+msgstr "Claude couldn't answer."
+
+#: src/app.rs
+msgid "Yanıt gelmedi."
+msgstr "No answer came."
+
+#: src/app.rs
+msgid "Kopyala"
+msgstr "Copy"
+
+#: src/settings_ui.rs
+msgid "Claude'a sor"
+msgstr "Ask Claude"
+
+#: src/settings_ui.rs
+msgid "Kartta bir yazı kutusu açar, cevap Claude Code'dan akar; pile Ctrl ile tıklamak da açar"
+msgstr "Opens a text box on the card, the answer flows in from Claude Code; Ctrl and a click on the pill opens it too"
+
+#: src/render/card.rs
+msgid "Enter ile sor"
+msgstr "Enter to ask"
+
+#: src/render/card.rs
+msgid "Bir şey sor…"
+msgstr "Ask something…"
+
+#: src/render/card.rs
+msgid "Düşünüyor…"
+msgstr "Thinking…"
+
+#: ui/pages.slint
+msgid "2 kısayol"
+msgstr "2 shortcuts"
+
+#: ui/pages.slint
+msgid "soru kartını açar"
+msgstr "opens the question card"
+
+#: ui/pages.slint
+msgid "ya da Ctrl + pile tık"
+msgstr "or Ctrl-click the pill"
+
+msgid "Kompakt arayüz"
+msgstr "واجهة مدمجة"
+
+msgid "Daha küçük pencerelerde daha fazla alan"
+msgstr "مساحة أكبر في النوافذ الصغيرة"

@@ -1,0 +1,114 @@
+name: Windows validation
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nowbar-pro-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/portable-check
+      - name: Portable production-module tests
+        run: cargo test --locked --manifest-path tools/portable-check/Cargo.toml
+      - name: Portable Clippy
+        run: cargo clippy --locked --manifest-path tools/portable-check/Cargo.toml --all-targets -- -D warnings
+      - name: Engine formatting
+        run: rustfmt --edition 2021 --check src/activities/engine.rs
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify Windows SDK
+        shell: pwsh
+        run: |
+          $rc = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\rc.exe' | Select-Object -Last 1
+          if (!$rc) { throw 'Windows SDK resource compiler is missing' }
+          Write-Output $rc.FullName
+      # Upstream has unformatted Rust. Keep the baseline visible without blocking builds.
+      - name: Report upstream formatting baseline
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+      - name: Check portable engine formatting
+        run: rustfmt --edition 2021 --check src/activities/engine.rs
+      - name: Test portable engine
+        shell: pwsh
+        run: |
+          rustc --edition 2021 --test src/activities/engine.rs -o "$env:RUNNER_TEMP/engine-tests.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:RUNNER_TEMP/engine-tests.exe"
+          exit $LASTEXITCODE
+      - name: Clippy
+        run: cargo lint --locked
+      - name: Workspace tests
+        run: cargo t --locked
+      - name: Portable localization and lifecycle tests
+        run: cargo test --locked --manifest-path tools/portable-check/Cargo.toml
+      - name: Release application
+        env:
+          # Upstream's packaging script uses thin LTO to avoid fat-LTO memory exhaustion.
+          CARGO_PROFILE_RELEASE_LTO: thin
+        run: cargo build --release --locked --bin nowbar --bin nowbar-settings
+      - name: Render settings in English and Arabic
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $env:APPDATA = Join-Path $env:RUNNER_TEMP 'nowbar-ui-settings'
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'nowbar-ui-local'
+          $configDir = Join-Path $env:APPDATA 'NowBar'
+          New-Item -ItemType Directory -Force $configDir | Out-Null
+          foreach ($mode in @('en-dark-expanded', 'ar-light-compact')) {
+            $arabic = $mode.StartsWith('ar')
+            $settings = @{
+              language = $(if ($arabic) { 'arabic' } else { 'english' })
+              settings_theme = $(if ($arabic) { 'light' } else { 'dark' })
+              interface_compact = $arabic
+              animation_speed = 'off'
+              weather_locate = $false
+            }
+            $settings | ConvertTo-Json | Set-Content (Join-Path $configDir 'settings.json') -Encoding utf8
+            $env:NOWBAR_LANG = $(if ($arabic) { 'ar' } else { 'en' })
+            $env:NOWBAR_SETTINGS_SHOTS_SCALE = $(if ($arabic) { '1.5' } else { '1' })
+            $env:NOWBAR_SETTINGS_SHOTS = Join-Path $env:RUNNER_TEMP "nowbar-shots/$mode"
+            $process = Start-Process 'target/release/nowbar-settings.exe' -PassThru
+            if (!$process.WaitForExit(90000)) { $process.Kill(); throw "Settings rendering timed out: $mode" }
+            if ($process.ExitCode -ne 0) { throw "Settings rendering failed: $mode (exit $($process.ExitCode))" }
+            $images = @(Get-ChildItem $env:NOWBAR_SETTINGS_SHOTS -Filter '*.png')
+            if ($images.Count -ne 12) { throw "Expected 12 rendered pages for $mode, got $($images.Count)" }
+            foreach ($image in $images) {
+              if ($image.Length -lt 1024) { throw "Empty rendered page: $($image.FullName)" }
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nowbar-pro-ui-screenshots
+          path: ${{ runner.temp }}/nowbar-shots
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nowbar-pro-windows-x64
+          path: |
+            target/release/nowbar.exe
+            target/release/nowbar-settings.exe
+          if-no-files-found: error

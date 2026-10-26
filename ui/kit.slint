@@ -4,8 +4,13 @@
 
 import { Theme, Tags } from "theme.slint";
 
+/// Text follows locale direction; icon glyphs and explicitly centred labels keep theirs.
+export component Label inherits Text {
+    horizontal-alignment: Theme.rtl ? right : left;
+}
+
 /// A Segoe Fluent Icons glyph (Segoe MDL2 Assets on Windows 10), centred in its box.
-export component Icon inherits Text {
+export component Icon inherits Label {
     in property <string> glyph;
     in property <length> size: 14px;
     // Windows 10's MDL2 (icons::in_mdl2): its Folder stands upright, FolderHorizontal is Fluent's;
@@ -42,7 +47,7 @@ export component Toggle inherits Rectangle {
     border-radius: 10px;
     background: checked ? Theme.acc : Theme.off-track;
     opacity: enabled ? 1 : 0.4;
-    animate background { duration: 150ms; easing: cubic-bezier(0.2, 0, 0, 1); }
+    animate background { duration: Theme.motion-standard; easing: cubic-bezier(0.2, 0, 0, 1); }
     Rectangle {
         x: root.checked ? root.width - 17px : 3px;
         y: 3px;
@@ -50,7 +55,7 @@ export component Toggle inherits Rectangle {
         height: 14px;
         border-radius: 7px;
         background: root.checked ? Theme.knob-on : Theme.off-knob;
-        animate x { duration: 150ms; easing: cubic-bezier(0.2, 0, 0, 1); }
+        animate x { duration: Theme.motion-standard; easing: cubic-bezier(0.2, 0, 0, 1); }
     }
     TouchArea {
         enabled: root.enabled;
@@ -72,7 +77,7 @@ export component Toggle inherits Rectangle {
             reject
         }
     }
-    if focus.has-focus: Ring { radius: 10px; w: root.width; h: root.height; }
+    if focus.has-focus: Ring { radius: Theme.control-radius; w: root.width; h: root.height; }
 }
 
 /// A short slider with its value beside it ("%92", "Ortada"). Drag, click, arrow keys.
@@ -171,7 +176,7 @@ export component MiniSlider inherits HorizontalLayout {
             }
         }
     }
-    Text {
+    Label {
         min-width: 44px;
         text: root.text;
         font-size: 14px;
@@ -193,8 +198,8 @@ export component Seg inherits HorizontalLayout {
         width: label.preferred-width + 20px;
         border-radius: 8px;
         background: root.selected == i ? Theme.seg-on : t.has-hover ? Theme.hov : transparent;
-        animate background { duration: 100ms; }
-        label := Text {
+        animate background { duration: Theme.motion-fast; }
+        label := Label {
             text: o;
             font-size: 13.5px;
             font-weight: 500;
@@ -221,7 +226,7 @@ export component Keycap inherits Rectangle {
     width: max(size, label.preferred-width + 12px);
     border-radius: 6px;
     background: Theme.key;
-    label := Text {
+    label := Label {
         text: root.key;
         font-size: root.size > 22px ? 12.5px : 11.5px;
         font-weight: 500;
@@ -240,7 +245,7 @@ export component Tag inherits Rectangle {
     width: label.preferred-width + (small ? 16px : 22px);
     border-radius: 7px;
     background: tint.with-alpha(Theme.dark ? 0.2 : 0.18);
-    label := Text {
+    label := Label {
         text: root.text;
         font-size: root.small ? 12px : 13.5px;
         font-weight: 500;
@@ -309,7 +314,7 @@ export component Select inherits Rectangle {
         padding-left: 10px;
         padding-right: 9px;
         spacing: 6px;
-        Text {
+        Label {
             text: root.shown;
             font-size: 13.5px;
             color: Theme.strong;
@@ -387,8 +392,8 @@ export component Select inherits Rectangle {
                         HorizontalLayout {
                             padding-left: 10px;
                             padding-right: 10px;
-                            spacing: 8px;
-                            Text {
+                            spacing: Theme.space-small;
+                            Label {
                                 text: o;
                                 font-size: 14px;
                                 font-weight: 500;
@@ -448,9 +453,9 @@ export component Swatch inherits Rectangle {
             drop-shadow-color: Theme.pop-shadow;
             VerticalLayout {
                 padding: 12px;
-                spacing: 12px;
+                spacing: Theme.space-medium;
                 HorizontalLayout {
-                    spacing: 8px;
+                    spacing: Theme.space-small;
                     for c[i] in root.presets: Rectangle {
                         width: 22px;
                         height: 22px;
@@ -476,7 +481,7 @@ export component Swatch inherits Rectangle {
                     HorizontalLayout {
                         padding-left: 10px;
                         padding-right: 10px;
-                        spacing: 8px;
+                        spacing: Theme.space-small;
                         Rectangle {
                             width: 14px;
                             height: 14px;
@@ -521,10 +526,10 @@ export component ISection inherits Rectangle {
         padding-right: 20px;
         padding-top: 6px;
         padding-bottom: 8px;
-        Text {
+        Label {
             height: 36px;
             text: root.title;
-            font-size: 13px;
+            font-size: Theme.text-body;
             color: Theme.label;
             vertical-alignment: center;
         }
@@ -533,22 +538,24 @@ export component ISection inherits Rectangle {
 }
 
 /// One inspector row: a white label on the left, its control on the right.
-export component IRow inherits HorizontalLayout {
+export component IRow inherits FlexboxLayout {
+    flex-direction: Theme.rtl ? row-reverse : row;
+    flex-wrap: no-wrap;
     in property <string> label;
     in property <string> note;
     height: note != "" ? 54px : 40px;
-    spacing: 12px;
+    spacing: Theme.space-medium;
     VerticalLayout {
         alignment: center;
         horizontal-stretch: 1;
-        Text {
+        Label {
             text: root.label;
             font-size: 14.5px;
             font-weight: 500;
             color: Theme.strong;
             overflow: elide;
         }
-        if root.note != "": Text {
+        if root.note != "": Label {
             text: root.note;
             font-size: 12.5px;
             color: Theme.text2;
@@ -576,17 +583,17 @@ export component H4 inherits HorizontalLayout {
     padding-left: 10px;
     padding-top: 16px;
     padding-bottom: 8px;
-    spacing: 8px;
+    spacing: Theme.space-small;
     alignment: start;
-    Text {
+    Label {
         text: root.title;
-        font-size: 13px;
+        font-size: Theme.text-body;
         font-weight: 500;
         color: Theme.section;
     }
-    Text {
+    Label {
         text: root.count;
-        font-size: 13px;
+        font-size: Theme.text-body;
         color: Theme.text3;
     }
 }
@@ -616,7 +623,7 @@ export component LRow inherits Rectangle {
     HorizontalLayout {
         padding-left: 10px;
         padding-right: 10px;
-        spacing: 12px;
+        spacing: Theme.space-medium;
         VerticalLayout {
             alignment: center;
             horizontal-stretch: 0;
@@ -639,7 +646,7 @@ export component LRow inherits Rectangle {
                 height: 22px;
                 border-radius: 6px;
                 background: root.badge;
-                Text {
+                Label {
                     text: root.letter;
                     font-size: 11px;
                     font-weight: 700;
@@ -649,7 +656,7 @@ export component LRow inherits Rectangle {
                 }
             }
         }
-        Text {
+        Label {
             text: root.title;
             font-size: 14px;
             font-weight: 500;
@@ -658,7 +665,7 @@ export component LRow inherits Rectangle {
             overflow: elide;
             horizontal-stretch: 0;
         }
-        Text {
+        Label {
             text: root.sub;
             font-size: 14px;
             color: Theme.text2;
@@ -670,7 +677,7 @@ export component LRow inherits Rectangle {
             alignment: center;
             horizontal-stretch: 0;
             HorizontalLayout {
-                spacing: 8px;
+                spacing: Theme.space-small;
                 alignment: end;
                 // Accessories of different heights (a Tag beside a pill or an icon button)
                 // share one centre line, not the top edge.
@@ -698,7 +705,7 @@ export component Tile inherits VerticalLayout {
         background: root.fill;
         border-width: 2px;
         border-color: root.selected ? Theme.tile-on : t.has-hover && root.clickable ? Theme.text3.with-alpha(0.5) : transparent;
-        animate border-color { duration: 120ms; }
+        animate border-color { duration: Theme.motion-fast; }
         @children
         t := TouchArea {
             enabled: root.clickable;
@@ -707,16 +714,16 @@ export component Tile inherits VerticalLayout {
         }
     }
     Rectangle { height: 9px; }
-    Text {
+    Label {
         text: root.title;
         font-size: 14px;
         font-weight: 500;
         color: Theme.text;
         overflow: elide;
     }
-    Text {
+    Label {
         text: root.sub;
-        font-size: 13px;
+        font-size: Theme.text-body;
         color: Theme.text2;
         overflow: elide;
     }
@@ -738,7 +745,7 @@ export component SideItem inherits Rectangle {
     height: 38px;
     border-radius: 9px;
     background: current ? Theme.sel : t.has-hover ? Theme.hov : transparent;
-    animate background { duration: 100ms; }
+    animate background { duration: Theme.motion-fast; }
     t := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.clicked(); }
@@ -773,7 +780,7 @@ export component SideItem inherits Rectangle {
                 }
             }
         }
-        Text {
+        Label {
             text: root.title;
             font-size: 14.5px;
             font-weight: 500;
@@ -782,7 +789,7 @@ export component SideItem inherits Rectangle {
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
-        if root.off: Text {
+        if root.off: Label {
             text: @tr("Kapalı");
             font-size: 12px;
             color: Theme.text3;

@@ -38,7 +38,7 @@ pub mod wellbeing;
 pub mod wellbeing_worker;
 pub mod zip;
 
-use std::cmp::Reverse;
+pub mod engine;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ActivityKind {
@@ -261,23 +261,14 @@ pub fn add_idle(p: &mut Vec<Presence>, now_ms: u64, idle_clock: bool, weather_be
 /// holds until any presence changes after picked_ms.
 pub fn stack_order(p: &[Presence], now_ms: u64, user_front: Option<(ActivityKind, u64)>) -> Vec<ActivityKind> {
     let (keep, buds_front) = (media_paused_keep_ms(), buds_front_ms());
-    let mut ranked: Vec<(u8, Reverse<u64>, ActivityKind)> =
-        p.iter().filter_map(|x| rank(x, now_ms, keep, buds_front).map(|r| (r, Reverse(x.changed_ms), x.kind))).collect();
-    ranked.sort_by_key(|(r, changed, _)| (*r, *changed));
-    let rank_of: Vec<(ActivityKind, u8)> = ranked.iter().map(|(r, _, k)| (*k, *r)).collect();
-    let mut order: Vec<ActivityKind> = ranked.into_iter().map(|(_, _, k)| k).collect();
-    if let Some((kind, picked_ms)) = user_front {
-        let superseded = p.iter().any(|x| x.changed_ms > picked_ms);
-        if let (false, Some(i)) = (superseded, order.iter().position(|k| *k == kind)) {
-            let picked = order.remove(i);
-            order.insert(0, picked);
-        }
-    }
-    // A finished timer (rank 0) and a moment while it plays (rank 1) go ahead of the user's
-    // pick (stable: the rest keeps its order, so the pick is back in front once the moment ends).
-    let urgent = |k: &ActivityKind| rank_of.iter().find(|(kind, _)| kind == k).map_or(2, |(_, r)| (*r).min(2));
-    order.sort_by_key(urgent);
-    order
+    let ranked = p.iter().filter_map(|x| {
+        rank(x, now_ms, keep, buds_front).map(|rank| engine::RankedActivity {
+            key: x.kind,
+            rank,
+            changed_ms: x.changed_ms,
+        })
+    }).collect();
+    engine::order(ranked, p.iter().map(|x| x.changed_ms).max().unwrap_or(0), user_front)
 }
 
 #[cfg(test)]

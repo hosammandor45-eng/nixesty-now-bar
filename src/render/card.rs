@@ -2465,11 +2465,14 @@ impl Painter<'_, '_> {
             (170.0, if m.playing { Icon::Pause } else { Icon::Play }, m.can.play_pause, CardAction::PlayPause),
             (236.0, Icon::Next, m.can.next, CardAction::Next),
         ] {
-            let area = rect(d(x - 25.0), cy - d(25.0), d(50.0), d(50.0));
-            self.ink.rrect(area, d(25.0), white(0.14))?;
-            let st = TextStyle::new(Face::Icons, Weight::Regular, d(22.0), white(enabled(on))).centered();
+            let primary = action == CardAction::PlayPause;
+            let radius = if primary { 29.0 } else { 25.0 };
+            let area = rect(d(x - radius), cy - d(radius), d(radius * 2.0), d(radius * 2.0));
+            let fill = if primary && on { rgba(ar, ag, ab, 0.55) } else { white(0.14) };
+            self.ink.rrect(area, d(radius), fill)?;
+            let st = TextStyle::new(Face::Icons, Weight::Regular, d(if primary { 26.0 } else { 22.0 }), white(enabled(on))).centered();
             self.ink.text(&glyph(icon).to_string(), area, &st)?;
-            self.hits.push((area, action));
+            if on { self.hits.push((area, action)); }
         }
         for (x, icon, supported, active, action) in [
             (32.0, Icon::Shuffle, m.can.shuffle, m.shuffle == Some(true), CardAction::Shuffle),
@@ -2485,7 +2488,7 @@ impl Painter<'_, '_> {
             };
             let st = TextStyle::new(Face::Icons, Weight::Regular, d(19.0), tint).centered();
             self.ink.text(&glyph(icon).to_string(), area, &st)?;
-            self.hits.push((area, action));
+            if supported { self.hits.push((area, action)); }
         }
         Ok(())
     }

@@ -131,3 +131,13 @@ mod tests {
         assert!(build().is_some_and(supported));
     }
 }
+
+/// Respect Windows accessibility's animation preference; keep animations if the query fails.
+pub fn animations_enabled() -> bool {
+    use windows::core::BOOL;
+    use windows::Win32::UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETCLIENTAREAANIMATION};
+    let mut enabled = BOOL(1);
+    unsafe {
+        SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, Some(&mut enabled as *mut _ as *mut _), Default::default())
+    }.map_or(true, |_| enabled.as_bool())
+}

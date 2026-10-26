@@ -11,7 +11,7 @@ import "fonts/Inter-Bold.ttf";
 import { Theme, Tags } from "theme.slint";
 import { Store, Hit } from "store.slint";
 import { Ui } from "ui-state.slint";
-import { Icon, Toggle, Keycap, IconButton, H4, LRow, SideItem } from "kit.slint";
+import { Label, Icon, Toggle, Keycap, IconButton, H4, LRow, SideItem } from "kit.slint";
 import {
     AppearanceBody, AppearanceInspector, GeneralBody, GeneralInspector, MediaBody, MediaInspector, TimerBody, TimerInspector,
     BudsBody, BudsInspector, MatchBody, MatchInspector, FullscreenBody, FullscreenInspector, AboutBody, AboutInspector,
@@ -49,13 +49,13 @@ component SideLabel inherits HorizontalLayout {
     padding-bottom: 6px;
     spacing: 8px;
     alignment: start;
-    Text {
+    Label {
         text: root.title;
         font-size: 13px;
         font-weight: 500;
         color: Theme.dark ? #B0B0B0 : #6E6E73;
     }
-    Text {
+    Label {
         text: root.count;
         font-size: 13px;
         color: Theme.text3;
@@ -91,7 +91,7 @@ component ActionItem inherits Rectangle {
             width: 16px;
             color: root.danger ? Theme.danger : Theme.text2;
         }
-        Text {
+        Label {
             text: root.text;
             font-size: 14px;
             font-weight: 500;
@@ -170,15 +170,17 @@ export component SettingsWindow inherits Window {
     icon: @image-url("../assets/nowbar-256.png");
     preferred-width: 1240px;
     preferred-height: 760px;
-    min-width: 1040px;
+    min-width: 1000px;
     min-height: 640px;
-    default-font-family: "Inter";
+    // Windows' Segoe UI includes Arabic shaping and glyph coverage on Windows 10/11.
+    default-font-family: Theme.rtl ? "Segoe UI" : "Inter";
     default-font-size: 14px;
     background: Theme.ground;
     changed width => { Ui.sized(); }
     changed height => { Ui.sized(); }
 
     /// Settings pages search the settings; Canlı maç and Tam ekran use the bar for their lists.
+    property <bool> compact: Store.interface-compact || Ui.viewport-width < 1160px;
     property <bool> settings-search: Store.page != 5 && Store.page != 6;
     property <bool> searching: settings-search && Ui.query != "";
     property <[Hit]> hits: searching ? Store.search(Ui.query) : [];
@@ -250,10 +252,13 @@ export component SettingsWindow inherits Window {
             reject
         }
 
-        HorizontalLayout {
+        FlexboxLayout {
+            flex-direction: Theme.rtl ? row-reverse : row;
+            flex-wrap: no-wrap;
+            alignment: stretch;
             // ------------------------------------------------ the list panel
             Rectangle {
-                width: 276px;
+                width: root.compact ? 224px : 276px;
                 DragArea { }
                 Rectangle {
                     x: 10px;
@@ -276,7 +281,7 @@ export component SettingsWindow inherits Window {
                                 alignment: center;
                                 Mark { }
                             }
-                            Text {
+                            Label {
                                 text: "Now Bar";
                                 font-size: 14.5px;
                                 font-weight: 600;
@@ -284,7 +289,7 @@ export component SettingsWindow inherits Window {
                                 vertical-alignment: center;
                                 horizontal-stretch: 1;
                             }
-                            Text {
+                            Label {
                                 text: Store.enabled ? @tr("Açık") : @tr("Kapalı");
                                 font-size: 13px;
                                 color: Theme.text2;
@@ -426,7 +431,7 @@ export component SettingsWindow inherits Window {
                                 }
                                 Rectangle {
                                     horizontal-stretch: 1;
-                                    Text {
+                                    Label {
                                         x: 0px;
                                         width: parent.width;
                                         height: parent.height;
@@ -549,7 +554,7 @@ export component SettingsWindow inherits Window {
                                     background: @conic-gradient(#FFD968 0deg, #F4A301 60deg, #FF6B6B 120deg, #A78BFA 180deg, #5DB3FF 240deg, #59D499 300deg, #FFD968 360deg);
                                 }
                             }
-                            Text {
+                            Label {
                                 text: root.status;
                                 font-size: 14px;
                                 font-weight: 500;
@@ -566,7 +571,7 @@ export component SettingsWindow inherits Window {
                             padding-left: 18px;
                             padding-right: 8px;
                             spacing: 10px;
-                            if root.primary != "": Text {
+                            if root.primary != "": Label {
                                 text: root.primary;
                                 font-size: 14px;
                                 font-weight: 500;
@@ -585,7 +590,7 @@ export component SettingsWindow inherits Window {
                                     background: Theme.text3;
                                 }
                             }
-                            Text {
+                            Label {
                                 text: @tr("Eylemler");
                                 font-size: 14px;
                                 font-weight: 500;
@@ -656,7 +661,7 @@ export component SettingsWindow inherits Window {
 
             // ------------------------------------------------ the inspector
             Rectangle {
-                width: 316px;
+                width: root.compact ? 300px : 316px;
                 background: Theme.insp;
                 Rectangle {
                     x: 0px;
@@ -683,7 +688,7 @@ export component SettingsWindow inherits Window {
                             alignment: start;
                             spacing: 8px;
                             cross-axis-alignment: center;
-                            Text {
+                            Label {
                                 text: Store.page == 0 ? @tr("Görünüm") : Store.page == 1 ? @tr("Genel") : Store.page == 2 ? @tr("Medya") : Store.page == 3 ? @tr("Zamanlayıcı")
                                     : Store.page == 4 ? "Galaxy Buds" : Store.page == 5 ? @tr("Canlı maç") : Store.page == 6 ? @tr("Tam ekran") : Store.page == 7 ? @tr("Hakkında") : Store.page == 9 ? @tr("Oyunlar") : Store.page == 10 ? @tr("Dijital Denge") : @tr("Sistem");
                                 font-size: 14.5px;
@@ -785,13 +790,13 @@ export component SettingsWindow inherits Window {
             box := VerticalLayout {
                 padding: 22px;
                 spacing: 10px;
-                Text {
+                Label {
                     text: @tr("Varsayılanlara dönülsün mü?");
                     font-size: 17px;
                     font-weight: 600;
                     color: Theme.strong;
                 }
-                Text {
+                Label {
                     text: @tr("Bütün ayarlar ilk hallerine döner; takip ettiğin takımlar, gizlediğin uygulamalar ve istisnalar da silinir.");
                     font-size: 13.5px;
                     color: Theme.text2;
@@ -806,7 +811,7 @@ export component SettingsWindow inherits Window {
                         height: 34px;
                         border-radius: 10px;
                         background: Theme.seg-on;
-                        Text {
+                        Label {
                             text: @tr("Vazgeç");
                             font-size: 14px;
                             font-weight: 500;
@@ -822,7 +827,7 @@ export component SettingsWindow inherits Window {
                         height: 34px;
                         border-radius: 10px;
                         background: Tags.red.with-alpha(0.22);
-                        Text {
+                        Label {
                             text: @tr("Sıfırla");
                             font-size: 14px;
                             font-weight: 600;

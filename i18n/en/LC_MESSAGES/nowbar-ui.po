@@ -3405,3 +3405,9 @@ msgstr "opens the question card"
 #: ui/pages.slint
 msgid "ya da Ctrl + pile tık"
 msgstr "or Ctrl-click the pill"
+
+msgid "Kompakt arayüz"
+msgstr "Compact interface"
+
+msgid "Daha küçük pencerelerde daha fazla alan"
+msgstr "More space in smaller windows"
