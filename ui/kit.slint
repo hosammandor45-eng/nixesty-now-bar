@@ -4,8 +4,13 @@
 
 import { Theme, Tags } from "theme.slint";
 
+/// Text follows locale direction; icon glyphs and explicitly centred labels keep theirs.
+export component Label inherits Text {
+    horizontal-alignment: Theme.rtl ? right : left;
+}
+
 /// A Segoe Fluent Icons glyph (Segoe MDL2 Assets on Windows 10), centred in its box.
-export component Icon inherits Text {
+export component Icon inherits Label {
     in property <string> glyph;
     in property <length> size: 14px;
     // Windows 10's MDL2 (icons::in_mdl2): its Folder stands upright, FolderHorizontal is Fluent's;
@@ -171,7 +176,7 @@ export component MiniSlider inherits HorizontalLayout {
             }
         }
     }
-    Text {
+    Label {
         min-width: 44px;
         text: root.text;
         font-size: 14px;
@@ -194,7 +199,7 @@ export component Seg inherits HorizontalLayout {
         border-radius: 8px;
         background: root.selected == i ? Theme.seg-on : t.has-hover ? Theme.hov : transparent;
         animate background { duration: Theme.motion-fast; }
-        label := Text {
+        label := Label {
             text: o;
             font-size: 13.5px;
             font-weight: 500;
@@ -221,7 +226,7 @@ export component Keycap inherits Rectangle {
     width: max(size, label.preferred-width + 12px);
     border-radius: 6px;
     background: Theme.key;
-    label := Text {
+    label := Label {
         text: root.key;
         font-size: root.size > 22px ? 12.5px : 11.5px;
         font-weight: 500;
@@ -240,7 +245,7 @@ export component Tag inherits Rectangle {
     width: label.preferred-width + (small ? 16px : 22px);
     border-radius: 7px;
     background: tint.with-alpha(Theme.dark ? 0.2 : 0.18);
-    label := Text {
+    label := Label {
         text: root.text;
         font-size: root.small ? 12px : 13.5px;
         font-weight: 500;
@@ -309,7 +314,7 @@ export component Select inherits Rectangle {
         padding-left: 10px;
         padding-right: 9px;
         spacing: 6px;
-        Text {
+        Label {
             text: root.shown;
             font-size: 13.5px;
             color: Theme.strong;
@@ -388,7 +393,7 @@ export component Select inherits Rectangle {
                             padding-left: 10px;
                             padding-right: 10px;
                             spacing: Theme.space-small;
-                            Text {
+                            Label {
                                 text: o;
                                 font-size: 14px;
                                 font-weight: 500;
@@ -521,7 +526,7 @@ export component ISection inherits Rectangle {
         padding-right: 20px;
         padding-top: 6px;
         padding-bottom: 8px;
-        Text {
+        Label {
             height: 36px;
             text: root.title;
             font-size: Theme.text-body;
@@ -533,7 +538,9 @@ export component ISection inherits Rectangle {
 }
 
 /// One inspector row: a white label on the left, its control on the right.
-export component IRow inherits HorizontalLayout {
+export component IRow inherits FlexboxLayout {
+    flex-direction: Theme.rtl ? row-reverse : row;
+    flex-wrap: no-wrap;
     in property <string> label;
     in property <string> note;
     height: note != "" ? 54px : 40px;
@@ -541,14 +548,14 @@ export component IRow inherits HorizontalLayout {
     VerticalLayout {
         alignment: center;
         horizontal-stretch: 1;
-        Text {
+        Label {
             text: root.label;
             font-size: 14.5px;
             font-weight: 500;
             color: Theme.strong;
             overflow: elide;
         }
-        if root.note != "": Text {
+        if root.note != "": Label {
             text: root.note;
             font-size: 12.5px;
             color: Theme.text2;
@@ -578,13 +585,13 @@ export component H4 inherits HorizontalLayout {
     padding-bottom: 8px;
     spacing: Theme.space-small;
     alignment: start;
-    Text {
+    Label {
         text: root.title;
         font-size: Theme.text-body;
         font-weight: 500;
         color: Theme.section;
     }
-    Text {
+    Label {
         text: root.count;
         font-size: Theme.text-body;
         color: Theme.text3;
@@ -639,7 +646,7 @@ export component LRow inherits Rectangle {
                 height: 22px;
                 border-radius: 6px;
                 background: root.badge;
-                Text {
+                Label {
                     text: root.letter;
                     font-size: 11px;
                     font-weight: 700;
@@ -649,7 +656,7 @@ export component LRow inherits Rectangle {
                 }
             }
         }
-        Text {
+        Label {
             text: root.title;
             font-size: 14px;
             font-weight: 500;
@@ -658,7 +665,7 @@ export component LRow inherits Rectangle {
             overflow: elide;
             horizontal-stretch: 0;
         }
-        Text {
+        Label {
             text: root.sub;
             font-size: 14px;
             color: Theme.text2;
@@ -707,14 +714,14 @@ export component Tile inherits VerticalLayout {
         }
     }
     Rectangle { height: 9px; }
-    Text {
+    Label {
         text: root.title;
         font-size: 14px;
         font-weight: 500;
         color: Theme.text;
         overflow: elide;
     }
-    Text {
+    Label {
         text: root.sub;
         font-size: Theme.text-body;
         color: Theme.text2;
@@ -773,7 +780,7 @@ export component SideItem inherits Rectangle {
                 }
             }
         }
-        Text {
+        Label {
             text: root.title;
             font-size: 14.5px;
             font-weight: 500;
@@ -782,7 +789,7 @@ export component SideItem inherits Rectangle {
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
-        if root.off: Text {
+        if root.off: Label {
             text: @tr("Kapalı");
             font-size: 12px;
             color: Theme.text3;

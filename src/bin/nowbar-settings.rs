@@ -407,14 +407,14 @@ fn show_buds(st: &Store, b: &Bridge) {
 }
 
 /// The Dil choice's order.
-const LANGUAGES: [LanguagePick; 3] = [LanguagePick::Auto, LanguagePick::Turkish, LanguagePick::English];
+const LANGUAGES: [LanguagePick; 4] = [LanguagePick::Auto, LanguagePick::Turkish, LanguagePick::English, LanguagePick::Arabic];
 
 /// Speaks `p`'s language: the Rust side's strings, and the Slint ones (bundled; "" is the Turkish
 /// they're written in).
 fn speak(p: LanguagePick) {
     let l = i18n::chosen(p);
     i18n::set_language(l);
-    let _ = slint::select_bundled_translation(if l == Language::English { "en" } else { "" });
+    let _ = slint::select_bundled_translation(if l == Language::Turkish { "" } else { l.code() });
 }
 
 /// Puts every setting into the window.
@@ -528,9 +528,12 @@ fn fill(ui: &SettingsWindow, s: &Settings, live_apps: &[String]) {
     st.set_update_ready(ready);
     st.set_page(s.settings_page as i32);
     st.set_preview_collapsed(s.settings_preview_collapsed);
+    st.set_interface_compact(s.interface_compact);
+    ui.global::<Theme>().set_dense(s.interface_compact);
+    ui.global::<Theme>().set_rtl(i18n::chosen(s.language).is_rtl());
     st.set_system_dark(system_dark());
     ui.global::<Theme>().set_dark(dark_for(s.settings_theme));
-    ui.global::<Theme>().set_reduced_motion(s.animation_speed == AnimationSpeed::Off);
+    ui.global::<Theme>().set_reduced_motion(s.animation_speed == AnimationSpeed::Off || !nowbar::platform::os::animations_enabled());
 }
 
 /// The window's values over `base` (lists are kept in `base` by their own callbacks).
@@ -558,6 +561,7 @@ fn read(ui: &SettingsWindow, base: &Settings) -> Settings {
         hotkey_picker: pick(&HOTKEYS, st.get_hotkey(), Hotkey::WinAltN),
         hotkey_question: pick(&QUESTION_HOTKEYS, st.get_question_hotkey(), QuestionHotkey::WinAltC),
         language: pick(&LANGUAGES, st.get_language(), LanguagePick::Auto),
+        interface_compact: st.get_interface_compact(),
         tray_left_click: if st.get_tray_click() == 1 { TrayClick::Settings } else { TrayClick::Picker },
         card_close_on_leave: st.get_close_on_leave(),
         card_leave_close_ms: st.get_leave_ms().round() as u32,
@@ -761,6 +765,7 @@ fn hook_chrome(ui: &SettingsWindow) {
     chrome.on_sized(move || {
         if let Some(ui) = ui_weak.upgrade() {
             ui.global::<Ui>().set_maximized(ui.window().is_maximized());
+            ui.global::<Ui>().set_viewport_width(ui.window().size().to_logical(ui.window().scale_factor()).width);
         }
     });
     // Closing goes the same way as before: the event loop ends and main() saves what's left.
@@ -832,6 +837,11 @@ fn main() -> Result<(), slint::PlatformError> {
     // Dev: NOWBAR_SETTINGS_SHOTS=<dir> draws every page with the real renderer, off-screen, into
     // <dir>, and quits without saving (and without touching a settings window that is open).
     let shots_dir = std::env::var("NOWBAR_SETTINGS_SHOTS").ok();
+    let shot_scale: f32 = std::env::var("NOWBAR_SETTINGS_SHOTS_SCALE").ok().and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    if shots_dir.is_some() && (!shot_scale.is_finite() || !(0.5..=4.0).contains(&shot_scale)) {
+        return Err(slint::PlatformError::Other("invalid screenshot scale".into()));
+    }
+    let offscreen = shots_dir.as_ref().map(|_| nowbar::slint_shot::install(shot_scale));
     // One window: a second launch brings the first to the front. (Dev: NOWBAR_SETTINGS_SOLO=1
     // opens another one anyway, for tools/frame-test.py.)
     if shots_dir.is_none() && std::env::var_os("NOWBAR_SETTINGS_SOLO").is_none() {
@@ -932,7 +942,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 let theme = pick(&[Look::System, Look::Dark, Look::Light], st.get_theme(), Look::System);
                 let dark = dark_for(theme);
                 ui.global::<Theme>().set_dark(dark);
-                ui.global::<Theme>().set_reduced_motion(st.get_speed() == 0);
+                ui.global::<Theme>().set_reduced_motion(st.get_speed() == 0 || !nowbar::platform::os::animations_enabled());
+                ui.global::<Theme>().set_dense(st.get_interface_compact());
                 style_title_bar(&ui, dark);
                 show_accent(&st);
                 st.set_system_dark(system_dark());
@@ -1204,6 +1215,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 // The lists the Rust side words, in the new language.
                 if let Some(ui) = ui_weak.upgrade() {
                     let st = ui.global::<Store>();
+                    ui.global::<Theme>().set_rtl(i18n::lang().is_rtl());
                     show_buds(&st, &bridge.borrow());
                     show_located(&st);
                 }
@@ -1332,6 +1344,22 @@ fn main() -> Result<(), slint::PlatformError> {
             }
             _ => {}
         });
+    }
+
+    // Render the actual configured UI with Slint's software platform. No desktop/GPU or
+    // active window is required, and screenshot/write failures propagate to CI.
+    if let (Some(dir), Some(window)) = (&shots_dir, &offscreen) {
+        std::fs::create_dir_all(dir).map_err(|e| slint::PlatformError::Other(e.to_string()))?;
+        let width = if bridge.borrow().settings.interface_compact { 1040.0 } else { 1240.0 };
+        ui.show()?;
+        let st = ui.global::<Store>();
+        for page in 0..=nowbar::settings_ui::PAGES.len() {
+            st.set_page(if page == nowbar::settings_ui::PAGES.len() { 0 } else { page as i32 });
+            ui.global::<Ui>().set_query(if page == nowbar::settings_ui::PAGES.len() { "opa".into() } else { "".into() });
+            nowbar::slint_shot::shot(window, width, 760.0, shot_scale, Duration::from_millis(100), &format!("{dir}/page-{page}.png"))
+                .map_err(|e| slint::PlatformError::Other(e.to_string()))?;
+        }
+        return Ok(());
     }
 
     // The dev shots open off-screen and hand the keyboard straight back to whoever had it.

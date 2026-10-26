@@ -135,7 +135,7 @@ pub struct Settings {
     pub enabled: bool,
     // Genel
     pub autostart: bool,
-    /// The interface's language (`Auto`: Windows' own, Turkish or English).
+    /// The interface's language (`Auto`: Windows' own, Turkish, English or Arabic).
     pub language: crate::i18n::LanguagePick,
     pub hotkey_picker: Hotkey,
     /// Opens the question card (a quick question to Claude Code).
@@ -287,6 +287,8 @@ pub struct Settings {
     pub settings_window: Option<(i32, i32, i32, i32)>,
     pub settings_page: u8,
     pub settings_preview_collapsed: bool,
+    /// Compact settings shell; independent of the bar and card sizes.
+    pub interface_compact: bool,
 }
 
 impl Default for Settings {
@@ -387,6 +389,7 @@ impl Default for Settings {
             settings_window: None,
             settings_page: 0,
             settings_preview_collapsed: false,
+            interface_compact: false,
         }
     }
 }
@@ -592,6 +595,18 @@ pub fn install(s: Settings) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn arabic_and_compact_preferences_persist_without_changing_old_defaults() {
+        let old = super::parse("{}");
+        assert!(!old.interface_compact);
+        let selected = super::parse(r#"{"language":"arabic","interface_compact":true}"#);
+        assert_eq!(selected.language, crate::i18n::LanguagePick::Arabic);
+        assert!(selected.interface_compact);
+        let restored = super::parse(&serde_json::to_string(&selected).unwrap());
+        assert_eq!(restored.language, selected.language);
+        assert_eq!(restored.interface_compact, selected.interface_compact);
+    }
+
     use super::*;
 
     fn temp_file(name: &str) -> std::path::PathBuf {

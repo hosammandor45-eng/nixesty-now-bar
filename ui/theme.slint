@@ -4,16 +4,18 @@
 
 export global Theme {
     in-out property <bool> dark: true;
+    in-out property <bool> rtl: false;
+    in-out property <bool> dense: false;
     /// Logical pixels scale with Slint's per-monitor DPI handling.
-    out property <length> space-small: 8px;
-    out property <length> space-medium: 12px;
+    out property <length> space-small: dense ? 6px : 8px;
+    out property <length> space-medium: dense ? 8px : 12px;
     out property <length> control-radius: 10px;
-    out property <length> text-body: 13px;
+    out property <length> text-body: dense ? 12.5px : 13px;
     in-out property <bool> reduced-motion: false;
     out property <duration> motion-fast: reduced-motion ? 0ms : 100ms;
     out property <duration> motion-standard: reduced-motion ? 0ms : 150ms;
     /// The window ground, lit from below the preview panel.
-    out property <color> ground: dark ? #161618 : #EDEDEF;
+    out property <color> ground: dark ? #15171C : #F3F5FA;
     out property <color> ground-lit: dark ? #2A2A2C : #FAFAFB;
     /// The inset list panel: lighter at the top.
     out property <color> side-top: dark ? #292929 : #F7F7F8;
@@ -34,9 +36,9 @@ export global Theme {
     out property <color> hov: dark ? #FFFFFF0A : #00000008;
     out property <color> tile: dark ? #212121 : #EFEEEC;
     /// Warm off-white text (Nocturne's Text) and pure white for the inspector's labels.
-    out property <color> text: dark ? #F6EEE3 : #1C1813;
+    out property <color> text: dark ? #F3F6FC : #182131;
     out property <color> strong: dark ? #FFFFFF : #111111;
-    out property <color> text2: dark ? #9C978F : #6B665E;
+    out property <color> text2: dark ? #B7C1D1 : #526177;
     out property <color> text3: dark ? #6F6A63 : #8E8982;
     out property <color> section: dark ? #A9A49C : #7A756D;
     out property <color> label: dark ? #8F8F8F : #7A7A7E;
@@ -48,11 +50,11 @@ export global Theme {
     out property <color> seg-on: dark ? #2A2A2A : #E6E6E8;
     out property <color> glyph: dark ? #CFCFCF : #55555A;
     /// The accent: Nocturne's Selection; Loader for the multicolour mark.
-    out property <color> acc: #FFD968;
+    out property <color> acc: dark ? #9AC2FF : #175CC4;
     out property <color> loader: #F4A301;
-    out property <color> sel-row: dark ? #FFD96821 : #FFD9684D;
-    out property <color> tile-on: dark ? #D9C07E : #C9A84E;
-    out property <color> knob-on: #1A1612;
+    out property <color> sel-row: dark ? #9AC2FF21 : #175CC41A;
+    out property <color> tile-on: dark ? #9AC2FF : #175CC4;
+    out property <color> knob-on: dark ? #12233D : #FFFFFF;
     out property <color> track: dark ? #333333 : #D6D6DA;
     out property <color> off-track: dark ? #3A3A3A : #CBCBD0;
     out property <color> off-knob: dark ? #A0A0A0 : #FFFFFF;

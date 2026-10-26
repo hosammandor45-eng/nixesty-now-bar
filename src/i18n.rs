@@ -17,6 +17,7 @@ pub enum Language {
     #[default]
     Turkish,
     English,
+    Arabic,
 }
 
 impl Language {
@@ -25,11 +26,14 @@ impl Language {
         match self {
             Language::Turkish => "tr",
             Language::English => "en",
+            Language::Arabic => "ar",
         }
     }
+
+    pub fn is_rtl(self) -> bool { self == Language::Arabic }
 }
 
-/// The settings' choice: Windows' own language, or one of the two.
+/// The settings' choice: Windows' own language, or an explicit supported language.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LanguagePick {
@@ -37,6 +41,7 @@ pub enum LanguagePick {
     Auto,
     Turkish,
     English,
+    Arabic,
 }
 
 static LANGUAGE: AtomicU8 = AtomicU8::new(0);
@@ -47,14 +52,15 @@ thread_local! {
 }
 
 include!(concat!(env!("OUT_DIR"), "/en.rs"));
+include!(concat!(env!("OUT_DIR"), "/ar.rs"));
 
 /// The language the interface speaks now.
 pub fn lang() -> Language {
-    OVERRIDE.with(Cell::get).unwrap_or(if LANGUAGE.load(Ordering::Relaxed) == 1 { Language::English } else { Language::Turkish })
+    OVERRIDE.with(Cell::get).unwrap_or(match LANGUAGE.load(Ordering::Relaxed) { 1 => Language::English, 2 => Language::Arabic, _ => Language::Turkish })
 }
 
 pub fn set_language(l: Language) {
-    LANGUAGE.store(u8::from(l == Language::English), Ordering::Relaxed);
+    LANGUAGE.store(match l { Language::Turkish => 0, Language::English => 1, Language::Arabic => 2 }, Ordering::Relaxed);
 }
 
 /// The language a setting picks: for `Auto`, Turkish only on a Turkish Windows.
@@ -62,17 +68,20 @@ pub fn pick(p: LanguagePick, windows_turkish: bool) -> Language {
     match p {
         LanguagePick::Turkish => Language::Turkish,
         LanguagePick::English => Language::English,
+        LanguagePick::Arabic => Language::Arabic,
         LanguagePick::Auto if windows_turkish => Language::Turkish,
         LanguagePick::Auto => Language::English,
     }
 }
 
-/// The language a setting gives on this PC: `NOWBAR_LANG` ("tr" or "en": the dev sheets and the
+/// The language a setting gives on this PC: `NOWBAR_LANG` ("tr", "en" or "ar": the dev sheets and the
 /// setup's shots in either language) first, else [`pick`] with Windows' own.
 pub fn chosen(p: LanguagePick) -> Language {
     match std::env::var("NOWBAR_LANG").as_deref() {
         Ok("en") => Language::English,
         Ok("tr") => Language::Turkish,
+        Ok("ar") => Language::Arabic,
+        _ if p == LanguagePick::Auto && windows_primary_language() == 1 => Language::Arabic,
         _ => pick(p, windows_is_turkish()),
     }
 }
@@ -95,7 +104,8 @@ pub fn tr(s: &str) -> &str {
     if lang() == Language::Turkish {
         return s;
     }
-    EN.binary_search_by(|(turkish, _)| (*turkish).cmp(s)).map_or(s, |i| EN[i].1)
+    let table = if lang() == Language::Arabic { AR } else { EN };
+    table.binary_search_by(|(turkish, _)| (*turkish).cmp(s)).map_or(s, |i| table[i].1)
 }
 
 /// `s` in the interface's language where the same Turkish means another thing elsewhere ("Kapalı":
@@ -105,7 +115,8 @@ pub fn trc<'a>(ctx: &str, s: &'a str) -> &'a str {
         return s;
     }
     let key = || ctx.bytes().chain(std::iter::once(4u8)).chain(s.bytes());
-    EN.binary_search_by(|(k, _)| k.bytes().cmp(key())).map_or(s, |i| EN[i].1)
+    let table = if lang() == Language::Arabic { AR } else { EN };
+    table.binary_search_by(|(k, _)| k.bytes().cmp(key())).map_or(s, |i| table[i].1)
 }
 
 /// `pattern` in the interface's language, its holes filled with `args` (see [`fill`]).
@@ -124,6 +135,7 @@ pub fn percent(v: impl Display) -> String {
     match lang() {
         Language::Turkish => format!("%{v}"),
         Language::English => format!("{v}%"),
+        Language::Arabic => format!("{v}٪"),
     }
 }
 
@@ -132,6 +144,7 @@ pub fn decimal_sep() -> char {
     match lang() {
         Language::Turkish => ',',
         Language::English => '.',
+        Language::Arabic => '٫',
     }
 }
 
@@ -141,6 +154,7 @@ pub fn decimal1(v: f64) -> String {
     match lang() {
         Language::Turkish => s.replace('.', ","),
         Language::English => s,
+        Language::Arabic => s.replace('.', "٫"),
     }
 }
 
@@ -176,6 +190,7 @@ pub fn fill(pattern: &str, args: &[&dyn Display]) -> String {
     out
 }
 
+#[cfg(windows)]
 #[link(name = "kernel32")]
 extern "system" {
     fn GetUserDefaultUILanguage() -> u16;
@@ -184,7 +199,14 @@ extern "system" {
 /// Windows' user interface language is Turkish.
 pub fn windows_is_turkish() -> bool {
     // LANG_TURKISH in the low 10 bits of the language id.
-    unsafe { GetUserDefaultUILanguage() & 0x3FF == 0x1F }
+    windows_primary_language() == 0x1F
+}
+
+fn windows_primary_language() -> u16 {
+    #[cfg(windows)]
+    { unsafe { GetUserDefaultUILanguage() & 0x3FF } }
+    #[cfg(not(windows))]
+    { 0 }
 }
 
 #[cfg(test)]
@@ -316,7 +338,7 @@ mod tests {
     /// (`tools/i18n-extract.py` adds the missing ones, empty, to fill in).
     #[test]
     fn every_string_has_english() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let root = std::path::Path::new(option_env!("NOWBAR_SOURCE_ROOT").unwrap_or(env!("CARGO_MANIFEST_DIR")));
         let mut files = Vec::new();
         for dir in ["src", "ui", "setup/src", "setup/ui"] {
             sources(&root.join(dir), &mut files);
@@ -359,5 +381,48 @@ mod tests {
         });
         assert_eq!(trc("hava", "Kapalı"), "Kapalı");
         assert_eq!(lang(), Language::Turkish, "the thread's language is back");
+    }
+}
+
+#[cfg(test)]
+mod arabic_tests {
+    use super::*;
+    #[test]
+    fn arabic_preference_roundtrips_and_uses_rtl() {
+        let saved = serde_json::to_string(&LanguagePick::Arabic).unwrap();
+        assert_eq!(saved, "\"arabic\"");
+        assert_eq!(serde_json::from_str::<LanguagePick>(&saved).unwrap(), LanguagePick::Arabic);
+        assert_eq!(pick(LanguagePick::Arabic, false), Language::Arabic);
+        assert!(Language::Arabic.is_rtl());
+        assert!(!Language::English.is_rtl());
+        in_language(Language::Arabic, || {
+            assert_eq!(tr("Dil"), "اللغة");
+            assert_eq!(trf("{} dk", &[&5]), "5 دقيقة");
+            assert_eq!(percent(48), "48٪");
+            assert_eq!(decimal1(1.2), "1٫2");
+            assert_eq!(lang().code(), "ar");
+        });
+    }
+    #[test]
+    fn arabic_catalog_preserves_fallbacks_and_format_arguments() {
+        assert_eq!(AR.len(), EN.len());
+        for (key, value) in AR {
+            assert!(!value.is_empty(), "empty translation: {key}");
+            let placeholders = |s: &str| {
+                let (mut out, mut next, mut at) = (Vec::new(), 0usize, 0);
+                while at < s.len() {
+                    let rest = &s[at..];
+                    if rest.starts_with("{{") || rest.starts_with("}}") { at += 2; continue; }
+                    if let Some(end) = rest.strip_prefix('{').and_then(|r| r.find('}')) {
+                        let inner = &rest[1..=end];
+                        if inner.is_empty() { out.push(next); next += 1; }
+                        else if let Ok(index) = inner.parse::<usize>() { out.push(index); }
+                        at += end + 2;
+                    } else { at += rest.chars().next().unwrap().len_utf8(); }
+                }
+                out.sort(); out
+            };
+            assert_eq!(placeholders(key), placeholders(value), "translation arguments: {key}");
+        }
     }
 }

@@ -11,6 +11,7 @@ pub const SPRING_DURATION_S: f32 = 0.45;
 
 /// Animation durations are multiplied by this (settings: off, slow, normal, fast).
 pub fn speed_factor() -> f32 {
+    if !crate::platform::os::animations_enabled() { return 0.01; }
     match crate::settings::current().animation_speed {
         crate::settings::AnimationSpeed::Off => 0.01,
         crate::settings::AnimationSpeed::Slow => 1.33,

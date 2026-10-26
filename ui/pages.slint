@@ -4,7 +4,7 @@
 import { Theme, Tags } from "theme.slint";
 import { Store, Item, Team, UsageRow } from "store.slint";
 import { Ui } from "ui-state.slint";
-import { Icon, Toggle, MiniSlider, Seg, Keycap, Tag, IconButton, Select, Swatch, ISection, IRow, H4, LRow, Tile } from "kit.slint";
+import { Label, Icon, Toggle, MiniSlider, Seg, Keycap, Tag, IconButton, Select, Swatch, ISection, IRow, H4, LRow, Tile } from "kit.slint";
 import { Pill, Pills, Art } from "pills.slint";
 
 /// Formats for slider values.
@@ -41,7 +41,7 @@ component Small inherits Rectangle {
             size: 11px;
             color: Theme.text;
         }
-        Text {
+        Label {
             text: root.text;
             font-size: 13px;
             font-weight: 500;
@@ -373,7 +373,7 @@ export component AppearanceInspector inherits VerticalLayout {
             Select {
                 options: [@tr("Kapalı"), @tr("Yavaş"), @tr("Normal"), @tr("Hızlı")];
                 selected <=> Store.speed;
-                box-width: 110px;
+                box-width: 132px;
                 picked => { Ui.changed(); }
             }
         }
@@ -499,10 +499,21 @@ export component GeneralInspector inherits VerticalLayout {
             note: @tr("Otomatik: Windows'unki");
             Select {
                 // Each language in its own words.
-                options: [@tr("Otomatik"), "Türkçe", "English"];
+                options: [@tr("Otomatik"), "Türkçe", "English", "العربية"];
                 selected <=> Store.language;
                 box-width: 110px;
                 picked(i) => { Store.language-picked(i); }
+            }
+        }
+    }
+    ISection {
+        title: @tr("Görünüm");
+        IRow {
+            label: @tr("Kompakt arayüz");
+            note: @tr("Daha küçük pencerelerde daha fazla alan");
+            Toggle {
+                checked <=> Store.interface-compact;
+                toggled => { Ui.changed(); }
             }
         }
     }
@@ -806,7 +817,7 @@ export component TimerBody inherits VerticalLayout {
             sub: @tr("seçicide");
             clickable: false;
             picture-height: 110px;
-            Text {
+            Label {
                 text: m;
                 font-size: 46px;
                 font-weight: 700;
@@ -957,7 +968,7 @@ export component BudsBody inherits VerticalLayout {
                 Store.buds-front = i;
                 Ui.changed();
             }
-            Text {
+            Label {
                 text: o.n;
                 font-size: 42px;
                 font-weight: 700;
@@ -1046,7 +1057,7 @@ component TeamLead inherits Rectangle {
         source: root.team.crest;
         image-fit: contain;
     }
-    if !root.team.has-crest: Text {
+    if !root.team.has-crest: Label {
         text: root.team.abbr;
         font-size: 8.5px;
         font-weight: 800;
@@ -1142,7 +1153,7 @@ export component MatchBody inherits VerticalLayout {
                     height: 64px;
                     border-radius: 32px;
                     background: t.primary;
-                    Text {
+                    Label {
                         text: t.abbr;
                         font-size: 20px;
                         font-weight: 800;
@@ -1350,7 +1361,7 @@ export component AboutBody inherits VerticalLayout {
             title: @tr("Maç verileri");
             sub: @tr("skor, dakika, armalar");
             clickable: false;
-            Text {
+            Label {
                 text: "ESPN";
                 font-size: 30px;
                 font-weight: 700;
@@ -1362,7 +1373,7 @@ export component AboutBody inherits VerticalLayout {
             title: @tr("Esin kaynağı");
             sub: @tr("Samsung'un Now Bar'ı");
             clickable: false;
-            Text {
+            Label {
                 text: "One UI 9";
                 font-size: 22px;
                 font-weight: 600;
@@ -1424,7 +1435,7 @@ export component AboutInspector inherits VerticalLayout {
     }
     ISection {
         title: @tr("Sıfırla");
-        Text {
+        Label {
             text: @tr("Bütün ayarlar ilk hallerine döner; takımlar, gizlenen uygulamalar ve istisnalar da silinir.");
             font-size: 13px;
             color: Theme.text2;
@@ -1437,7 +1448,7 @@ export component AboutInspector inherits VerticalLayout {
             background: t.has-hover ? Tags.red.with-alpha(0.16) : Tags.red.with-alpha(0.08);
             border-width: 1px;
             border-color: Tags.red.with-alpha(0.3);
-            Text {
+            Label {
                 text: @tr("Varsayılanlara dön…");
                 font-size: 14px;
                 font-weight: 500;
@@ -1585,7 +1596,7 @@ component CityPicker inherits VerticalLayout {
             spacing: 2px;
             HorizontalLayout {
                 spacing: 5px;
-                Text {
+                Label {
                     max-width: 120px;
                     text: Store.city.name;
                     font-size: 14px;
@@ -1594,7 +1605,7 @@ component CityPicker inherits VerticalLayout {
                     vertical-alignment: center;
                     overflow: elide;
                 }
-                Text {
+                Label {
                     max-width: 66px;
                     text: "· " + Store.city.country;
                     font-size: 14px;
@@ -1631,7 +1642,7 @@ component CityPicker inherits VerticalLayout {
                 size: 11px;
                 color: Theme.text2;
             }
-            if input.text == "": Text {
+            if input.text == "": Label {
                 x: 27px;
                 width: parent.width - 37px;
                 height: parent.height;
@@ -1679,7 +1690,7 @@ component CityPicker inherits VerticalLayout {
                     }
                     HorizontalLayout {
                         spacing: 5px;
-                        Text {
+                        Label {
                             text: c.name;
                             font-size: 14px;
                             font-weight: 500;
@@ -1688,7 +1699,7 @@ component CityPicker inherits VerticalLayout {
                             overflow: elide;
                             horizontal-stretch: 0;
                         }
-                        Text {
+                        Label {
                             text: "· " + c.country;
                             font-size: 14px;
                             color: Theme.text2;
@@ -1842,7 +1853,7 @@ export component SystemInspector inherits VerticalLayout {
                 toggled => { Ui.changed(); }
             }
         }
-        Text {
+        Label {
             text: @tr("Açıkken, izin verdiğin uygulamalar pilde bildirim gösterebilir. Hangi uygulamalara izin verdiğin ve gösterdikleri senin sorumluluğunda; Now Bar yalnızca gösterir.");
             font-size: 13px;
             color: Theme.text2;
@@ -1875,7 +1886,7 @@ export component SystemInspector inherits VerticalLayout {
                     mouse-cursor: text;
                     clicked => { name.focus(); }
                 }
-                if name.text == "": Text {
+                if name.text == "": Label {
                     x: 10px;
                     width: parent.width - 20px;
                     height: parent.height;
@@ -2115,7 +2126,7 @@ export component WellbeingBody inherits VerticalLayout {
                 spacing: 7px;
                 HorizontalLayout {
                     spacing: 8px;
-                    Text {
+                    Label {
                         text: a.name;
                         font-size: 14px;
                         font-weight: 500;
@@ -2123,7 +2134,7 @@ export component WellbeingBody inherits VerticalLayout {
                         overflow: elide;
                         horizontal-stretch: 1;
                     }
-                    Text {
+                    Label {
                         text: a.time;
                         font-size: 13px;
                         color: Theme.text2;
