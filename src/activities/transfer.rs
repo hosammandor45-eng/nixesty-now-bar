@@ -21,7 +21,8 @@ pub enum TransferKind {
     Delete,
 }
 
-/// The percent in a dialog's title: "45% complete", "%45 tamamlandı", "45 % terminé".
+/// The percent in a dialog's title: "45% complete", Turkish Windows 11's "45%  tamamlandı" (seen
+/// live, before which it says "İlerleme durumu"), "%45", "45 % terminé".
 pub fn percent_in(title: &str) -> Option<u8> {
     let chars: Vec<char> = title.chars().collect();
     let digits = |it: &mut dyn Iterator<Item = &char>| it.take_while(|c| c.is_ascii_digit()).collect::<String>();
@@ -113,6 +114,8 @@ mod tests {
     #[test]
     fn the_percent_in_either_language() {
         assert_eq!(percent_in("45% complete"), Some(45));
+        assert_eq!(percent_in("19%  tamamlandı"), Some(19), "Turkish Windows 11's, two spaces and all");
+        assert_eq!(percent_in("İlerleme durumu"), None, "before the first percent");
         assert_eq!(percent_in("%45 tamamlandı"), Some(45));
         assert_eq!(percent_in("100% complete"), Some(100));
         assert_eq!(percent_in("45 % terminé"), Some(45));

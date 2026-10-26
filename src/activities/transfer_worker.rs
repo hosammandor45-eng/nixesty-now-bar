@@ -1,6 +1,9 @@
 //! Explorer's copy dialog (OperationStatusWindow), looked at once a second on its own thread:
 //! its title's percent (else its progress bars', through UI Automation) and, once, its words for
 //! what it does. Read only: nothing is clicked or moved. Minimised, it still says all this.
+//! Seen live (Windows 11, Turkish): no progress bar in its UI Automation tree; text elements by
+//! id: eltStartText "25.026 öğe ", eltEndText " hedefine kopyalanıyor", eltSummary "19%
+//! tamamlandı", eltTimeRemaining "Yaklaşık 3 dakika" (its own words, not read: the pace is ours).
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
