@@ -9,6 +9,8 @@ import com.example.myaiagent.execution.ActionResult
 import com.example.myaiagent.execution.AgentAccessibilityService
 import com.example.myaiagent.execution.AppChoice
 import com.example.myaiagent.execution.AppLauncher
+import com.example.myaiagent.execution.SearchSubmission
+import com.example.myaiagent.execution.SubmissionResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -80,8 +82,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                             if (target == null) false else {
                                 record("انتظار شاشة البحث في التطبيق المفتوح…")
                                 awaitReady { AgentAccessibilityService.openSearch(target) } &&
-                                    awaitReady { AgentAccessibilityService.enterSearch(target, command.query) } &&
-                                    awaitReady { AgentAccessibilityService.submitSearch(target) }
+                                    when (SearchSubmission(AgentAccessibilityService.searchUi(target, command.query)).run()) {
+                                        SubmissionResult.VERIFIED -> true
+                                        SubmissionResult.FAILED -> { record("تعذر إرسال البحث؛ تحقق من حقل البحث وزره."); false }
+                                        SubmissionResult.UNCONFIRMED -> { record("تعذر تأكيد ظهور النتائج. ربما أُرسل البحث؛ تحقق قبل إعادة المحاولة."); false }
+                                    }
                             }
                         }
                         else -> {

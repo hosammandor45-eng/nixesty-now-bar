@@ -20,7 +20,12 @@ class AgentAccessibilityService : AccessibilityService() {
         fun execute(command: Command): ActionResult = instance?.perform(command) ?: ActionResult.FAILURE
         fun openSearch(packageName: String): ActionResult = instance?.openSearchControl(packageName) ?: ActionResult.FAILURE
         fun enterSearch(packageName: String, query: String): ActionResult = instance?.setSearchText(packageName, query) ?: ActionResult.FAILURE
-        fun submitSearch(packageName: String): ActionResult = instance?.submitSearchText(packageName) ?: ActionResult.FAILURE
+        fun searchUi(packageName: String, query: String): SearchUi = object : SearchUi {
+            override fun focusAndEnter() = instance?.focusAndEnter(packageName, query) == true
+            override fun state() = instance?.searchState(packageName, query) ?: SearchState.OTHER
+            override fun ime() = instance?.submitIme(packageName, query) ?: Attempt.FAILED
+            override fun button() = instance?.submitButton(packageName, query) ?: Attempt.FAILED
+        }
     }
 
     override fun onServiceConnected() { instance = this; _connected.value = true }
@@ -70,19 +75,45 @@ class AgentAccessibilityService : AccessibilityService() {
         return if (setText(fields.single(), query)) ActionResult.SUCCESS else ActionResult.FAILURE
     }
 
-    private fun submitSearchText(expected: String): ActionResult {
-        return withRoot(expected) { root ->
-            val fields = nodes(root).filter { it.isEditable && !it.isPassword && it.isVisibleToUser }
-            if (fields.size != 1 || !isSearchField(fields.single())) return@withRoot false
-            val field = fields.single()
-            // Only invoke an IME action explicitly exposed by this field; never guess coordinates.
-            if (Build.VERSION.SDK_INT >= 30 && field.actionList.any { it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id }) {
-                field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
-            } else {
-                val controls = matching(root, searchLabels)
-                controls.size == 1 && click(controls.single())
-            }
+    private fun activeRoot(expected: String): AccessibilityNodeInfo? = rootInActiveWindow?.takeIf {
+        it.packageName?.toString() == expected && expected != packageName
+    }
+    private fun focusedSearch(root: AccessibilityNodeInfo, query: String): AccessibilityNodeInfo? =
+        root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf {
+            it.isEditable && !it.isPassword && it.isVisibleToUser && isSearchField(it) && it.text?.toString() == query
         }
+    private fun focusAndEnter(expected: String, query: String): Boolean {
+        val root = activeRoot(expected) ?: return false
+        val fields = nodes(root).filter { it.isEditable && !it.isPassword && it.isVisibleToUser && isSearchField(it) }
+        if (fields.size != 1) return false
+        val field = fields.single()
+        if (!field.isFocused && !field.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) return false
+        val fresh = activeRoot(expected) ?: return false
+        val focused = fresh.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        if (!focused.isEditable || focused.isPassword || !isSearchField(focused)) return false
+        if (!setText(focused, query)) return false
+        return activeRoot(expected)?.let { focusedSearch(it, query) } != null
+    }
+    private fun searchState(expected: String, query: String): SearchState {
+        val root = activeRoot(expected) ?: return SearchState.OTHER
+        if (focusedSearch(root, query) != null) return SearchState.EDITOR
+        val focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (focus != null && focus.isEditable && !focus.isPassword && isSearchField(focus)) return SearchState.OTHER
+        // Require query text on the target screen after leaving the focused editor.
+        return if (nodes(root).any { !it.isEditable && !it.isPassword && it.isVisibleToUser &&
+                (it.text?.toString() == query || it.contentDescription?.toString() == query) }) SearchState.RESULTS else SearchState.OTHER
+    }
+    private fun submitIme(expected: String, query: String): Attempt {
+        val root = activeRoot(expected) ?: return Attempt.FAILED
+        val field = focusedSearch(root, query) ?: return Attempt.FAILED
+        if (Build.VERSION.SDK_INT < 30 || field.actionList.none { it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id }) return Attempt.UNAVAILABLE
+        return if (field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) Attempt.ACCEPTED else Attempt.FAILED
+    }
+    private fun submitButton(expected: String, query: String): Attempt {
+        val root = activeRoot(expected) ?: return Attempt.FAILED
+        if (focusedSearch(root, query) == null) return Attempt.FAILED
+        val controls = matching(root, searchLabels + setOf("Submit", "إرسال"))
+        return if (controls.size == 1 && click(controls.single())) Attempt.ACCEPTED else Attempt.UNAVAILABLE
     }
 
     private fun setText(node: AccessibilityNodeInfo, text: String): Boolean =
