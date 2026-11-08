@@ -39,6 +39,7 @@ private fun AgentScreen(openSettings: () -> Unit, model: AgentViewModel = viewMo
     val connected by AgentAccessibilityService.connected.collectAsStateWithLifecycle()
     val pending by model.pending.collectAsStateWithLifecycle()
     val running by model.running.collectAsStateWithLifecycle()
+    val choices by model.choices.collectAsStateWithLifecycle()
     val log by model.log.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -54,7 +55,7 @@ private fun AgentScreen(openSettings: () -> Unit, model: AgentViewModel = viewMo
                 }
             }
             OutlinedTextField(value = input, onValueChange = { input = it }, modifier = Modifier.fillMaxWidth(), label = { Text("اكتب أمرك بالعربية") }, minLines = 2)
-            Text("أمثلة: افتح الخرائط، رجوع، الرئيسية، تمرير للأسفل، تمرير للأعلى، اضغط إرسال، اكتب مرحبا", style = MaterialTheme.typography.bodySmall)
+            Text("أمثلة: افتح الإعدادات، افتح YouTube وابحث عن جيلي سيتي راي، رجوع، الرئيسية، تمرير للأسفل، اضغط إرسال، اكتب مرحبا", style = MaterialTheme.typography.bodySmall)
             Text("إجراءات الشاشة تبدأ بعد ٥ ثوانٍ؛ انتقل خلالها إلى التطبيق المطلوب. لإدخال النص، حدد حقل الكتابة أولاً.", style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { model.submit(input) }, enabled = !running && pending == null) { Text("تنفيذ الأمر") }
@@ -66,12 +67,25 @@ private fun AgentScreen(openSettings: () -> Unit, model: AgentViewModel = viewMo
             log.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
         }
     }
-    pending?.let { command ->
-        val detail = when (command) {
-            is Command.Tap -> "النقر على العنصر المطابق: ${command.label}"
-            is Command.EnterText -> "استبدال محتوى الحقل المحدد بالنص: ${command.text}"
-            else -> "تنفيذ الإجراء"
+    pending?.let { commands ->
+        val detail = commands.joinToString("\n") { command ->
+            when (command) {
+                is Command.OpenApp -> "فتح: ${command.name}"
+                is Command.Tap -> "النقر على: ${command.label}"
+                is Command.EnterText -> "استبدال محتوى الحقل بالنص: ${command.text}"
+                is Command.Search -> "البحث عن: ${command.query} وإرسال البحث"
+                else -> "تنفيذ إجراء التنقل"
+            }
         }
-        AlertDialog(onDismissRequest = model::dismiss, title = { Text("تأكيد الإجراء") }, text = { Text("$detail\nقد يؤدي هذا الإجراء إلى تغيير بيانات أو إرسالها. تأكد من الشاشة المستهدفة.") }, confirmButton = { TextButton(onClick = model::confirm) { Text("تأكيد") } }, dismissButton = { TextButton(onClick = model::dismiss) { Text("إلغاء") } })
+        AlertDialog(onDismissRequest = model::dismiss, title = { Text("تأكيد الإجراءات") }, text = { Text("$detail\nقد يؤدي التنفيذ إلى إرسال بيانات أو تغييرها. تأكد من التطبيق والشاشة.") }, confirmButton = { TextButton(onClick = model::confirm) { Text("تأكيد") } }, dismissButton = { TextButton(onClick = model::dismiss) { Text("إلغاء") } })
+    }
+    if (choices.isNotEmpty()) {
+        AlertDialog(onDismissRequest = { model.choose(null) }, title = { Text("اختر التطبيق") }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                choices.forEach { choice ->
+                    TextButton(onClick = { model.choose(choice) }) { Text("${choice.label} (${choice.packageName})") }
+                }
+            }
+        }, confirmButton = {}, dismissButton = { TextButton(onClick = { model.choose(null) }) { Text("إلغاء") } })
     }
 }
