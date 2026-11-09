@@ -11,6 +11,8 @@ import com.example.myaiagent.execution.AppChoice
 import com.example.myaiagent.execution.AppLauncher
 import com.example.myaiagent.execution.SearchSubmission
 import com.example.myaiagent.execution.SubmissionResult
+import com.example.myaiagent.execution.Stage
+import com.example.myaiagent.execution.StageStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -83,13 +85,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         is Command.Search -> {
                             val target = targetPackage
                             if (target == null) false else {
-                                record("انتظار شاشة البحث في التطبيق المفتوح…")
-                                awaitReady { AgentAccessibilityService.openSearch(target) } &&
-                                    when (SearchSubmission(AgentAccessibilityService.searchUi(target, command.query) { executionId == currentId && job?.isActive == true }).run()) {
-                                        SubmissionResult.VERIFIED -> true
-                                        SubmissionResult.FAILED -> { record("تعذر إرسال البحث؛ تحقق من حقل البحث وزره."); false }
-                                        SubmissionResult.UNCONFIRMED -> { record("تعذر تأكيد ظهور النتائج. ربما أُرسل البحث؛ تحقق قبل إعادة المحاولة."); false }
-                                    }
+                                val ui = AgentAccessibilityService.searchUi(target, command.query) { executionId == currentId && job?.isActive == true }
+                                val result = SearchSubmission(ui, progress = { stage, value ->
+                                    if (value.status != StageStatus.NOT_READY) record("${stageLabel(stage)}: ${value.reason}")
+                                }).run()
+                                if (result.result != SubmissionResult.VERIFIED) {
+                                    record("${stageLabel(result.stage)}: ${result.reason}")
+                                    if (result.result == SubmissionResult.UNCONFIRMED) record("النتيجة غير مؤكدة؛ تحقق من التطبيق قبل إعادة المحاولة.")
+                                }
+                                result.result == SubmissionResult.VERIFIED
                             }
                         }
                         else -> {
@@ -110,15 +114,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
         job?.start()
     }
-    private suspend fun awaitReady(action: () -> ActionResult): Boolean = withTimeoutOrNull(10_000) {
-        while (true) {
-            when (action()) {
-                ActionResult.SUCCESS -> return@withTimeoutOrNull true
-                ActionResult.FAILURE -> return@withTimeoutOrNull false
-                ActionResult.NOT_READY -> delay(250)
-            }
-        }
-        @Suppress("UNREACHABLE_CODE") false
-    } ?: false
+    private fun stageLabel(stage: Stage): String = when (stage) {
+        Stage.SEARCH_UI -> "شاشة البحث"
+        Stage.FIELD -> "اكتشاف الحقل"
+        Stage.FOCUS -> "تركيز الحقل"
+        Stage.TEXT_ENTRY -> "إدخال النص"
+        Stage.TEXT_VERIFICATION -> "التحقق من الإدخال"
+        Stage.SUBMISSION -> "إرسال البحث"
+        Stage.RESULTS -> "التحقق من النتائج"
+    }
     private fun record(message: String) { _log.value = (listOf(message) + _log.value).take(50) }
 }

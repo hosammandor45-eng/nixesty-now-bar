@@ -10,8 +10,8 @@ android {
         applicationId = "com.example.myaiagent"
         minSdk = 29
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }

@@ -18,10 +18,16 @@ class AgentAccessibilityService : AccessibilityService() {
         private val _connected = MutableStateFlow(false)
         val connected = _connected.asStateFlow()
         fun execute(command: Command): ActionResult = instance?.perform(command) ?: ActionResult.FAILURE
-        fun openSearch(packageName: String): ActionResult = instance?.openSearchControl(packageName) ?: ActionResult.FAILURE
-        fun enterSearch(packageName: String, query: String): ActionResult = instance?.setSearchText(packageName, query) ?: ActionResult.FAILURE
         fun searchUi(packageName: String, query: String, isCurrent: () -> Boolean): SearchUi = object : SearchUi {
-            override fun focusAndEnter() = isCurrent() && instance?.focusAndEnter(packageName, query) == true
+            private fun call(block: (AgentAccessibilityService) -> StageResult): StageResult =
+                if (!isCurrent()) StageResult(StageStatus.FAILED, "انتهى التنفيذ أو أُوقف")
+                else instance?.let(block) ?: StageResult(StageStatus.FAILED, "خدمة إمكانية الوصول غير متصلة")
+            override fun openSearch() = call { it.openSearchStage(packageName) }
+            override fun discoverField() = call { it.fieldStage(packageName) }
+            override fun requestFocus() = call { it.focusStage(packageName) }
+            override fun verifyFocus() = call { it.focusVerification(packageName) }
+            override fun enterText() = call { it.enterStage(packageName, query) }
+            override fun verifyText() = call { it.textVerification(packageName, query) }
             override fun state() = if (isCurrent()) instance?.searchState(packageName, query) ?: SearchState.OTHER else SearchState.OTHER
             override fun ime() = if (isCurrent()) instance?.submitIme(packageName, query) ?: Attempt.FAILED else Attempt.FAILED
             override fun suggestion() = if (isCurrent()) instance?.submitSuggestion(packageName, query, isCurrent) ?: Attempt.FAILED else Attempt.FAILED
@@ -66,15 +72,6 @@ class AgentAccessibilityService : AccessibilityService() {
         return if (controls.size == 1 && click(controls.single())) ActionResult.SUCCESS else ActionResult.FAILURE
     }
 
-    private fun setSearchText(expected: String, query: String): ActionResult {
-        val root = rootInActiveWindow ?: return ActionResult.NOT_READY
-        if (root.packageName?.toString() != expected || expected == packageName) return ActionResult.NOT_READY
-        val fields = nodes(root).filter { it.isEditable && !it.isPassword && it.isVisibleToUser }
-        if (fields.isEmpty()) return ActionResult.NOT_READY
-        if (fields.size != 1 || !isSearchField(fields.single())) return ActionResult.FAILURE
-        return if (setText(fields.single(), query)) ActionResult.SUCCESS else ActionResult.FAILURE
-    }
-
     private fun activeRoot(expected: String): AccessibilityNodeInfo? = rootInActiveWindow?.takeIf {
         it.packageName?.toString() == expected && expected != packageName
     }
@@ -82,17 +79,51 @@ class AgentAccessibilityService : AccessibilityService() {
         root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf {
             it.isEditable && !it.isPassword && it.isVisibleToUser && isSearchField(it) && it.text?.toString() == query
         }
-    private fun focusAndEnter(expected: String, query: String): Boolean {
-        val root = activeRoot(expected) ?: return false
-        val fields = nodes(root).filter { it.isEditable && !it.isPassword && it.isVisibleToUser && isSearchField(it) }
-        if (fields.size != 1) return false
-        val field = fields.single()
-        if (!field.isFocused && !field.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) return false
-        val fresh = activeRoot(expected) ?: return false
-        val focused = fresh.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
-        if (!focused.isEditable || focused.isPassword || !isSearchField(focused)) return false
-        if (!setText(focused, query)) return false
-        return activeRoot(expected)?.let { focusedSearch(it, query) } != null
+    private fun searchFields(root: AccessibilityNodeInfo) = nodes(root).filter {
+        it.isEditable && !it.isPassword && it.isVisibleToUser && it.isEnabled && isSearchField(it)
+    }
+    private fun openSearchStage(expected: String): StageResult = when (openSearchControl(expected)) {
+        ActionResult.SUCCESS -> StageResult(StageStatus.READY, "شاشة البحث متاحة أو طُلب فتحها")
+        ActionResult.NOT_READY -> StageResult(StageStatus.NOT_READY, "انتظار شاشة التطبيق أو زر البحث")
+        ActionResult.FAILURE -> StageResult(StageStatus.FAILED, "زر البحث أو الحقل غير واضح أو تعذر فتحه")
+    }
+    private fun fieldStage(expected: String): StageResult {
+        val root = activeRoot(expected) ?: return StageResult(StageStatus.NOT_READY, "انتظار نافذة التطبيق المستهدف")
+        return when (searchFields(root).size) {
+            0 -> StageResult(StageStatus.NOT_READY, "انتظار حقل بحث قابل للوصول")
+            1 -> StageResult(StageStatus.READY, "عُثر على حقل بحث واحد")
+            else -> StageResult(StageStatus.FAILED, "توجد عدة حقول بحث؛ تعذر الاختيار بأمان")
+        }
+    }
+    private fun focusStage(expected: String): StageResult {
+        val root = activeRoot(expected) ?: return StageResult(StageStatus.FAILED, "تغيرت نافذة التطبيق قبل التركيز")
+        val field = searchFields(root).singleOrNull() ?: return StageResult(StageStatus.FAILED, "لم يعد حقل البحث فريداً")
+        if (field.isFocused) return StageResult(StageStatus.READY, "الحقل محدد")
+        return if (field.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) StageResult(StageStatus.READY, "طُلب تركيز الحقل")
+        else StageResult(StageStatus.FAILED, "رفض التطبيق تركيز حقل البحث")
+    }
+    private fun focusVerification(expected: String): StageResult {
+        val root = activeRoot(expected) ?: return StageResult(StageStatus.NOT_READY, "انتظار نافذة التطبيق المستهدف")
+        val fields = searchFields(root)
+        if (fields.size > 1) return StageResult(StageStatus.FAILED, "توجد عدة حقول بحث")
+        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        return if (fields.size == 1 && focused != null && focused == fields.single()) StageResult(StageStatus.READY, "تم التحقق من التركيز")
+        else StageResult(StageStatus.NOT_READY, "انتظار تركيز حقل البحث")
+    }
+    private fun enterStage(expected: String, query: String): StageResult {
+        val root = activeRoot(expected) ?: return StageResult(StageStatus.FAILED, "تغيرت نافذة التطبيق قبل إدخال النص")
+        val fields = searchFields(root)
+        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (fields.size != 1 || focused == null || focused != fields.single()) return StageResult(StageStatus.FAILED, "لم يعد حقل البحث الفريد محدداً")
+        return if (setText(focused, query)) StageResult(StageStatus.READY, "أُرسل إجراء إدخال النص مرة واحدة")
+        else StageResult(StageStatus.UNCONFIRMED, "لم يؤكد التطبيق إجراء إدخال النص؛ لم تُكرر المحاولة")
+    }
+    private fun textVerification(expected: String, query: String): StageResult {
+        val root = activeRoot(expected) ?: return StageResult(StageStatus.NOT_READY, "انتظار نافذة التطبيق بعد الإدخال")
+        val fields = searchFields(root)
+        if (fields.size > 1) return StageResult(StageStatus.UNCONFIRMED, "توجد عدة حقول بعد إدخال النص")
+        return if (fields.singleOrNull()?.text?.toString() == query) StageResult(StageStatus.READY, "تم التحقق من إدخال النص")
+        else StageResult(StageStatus.NOT_READY, "انتظار تحديث حقل البحث")
     }
     private fun snapshot(node: AccessibilityNodeInfo): SuggestionNode = SuggestionNode(
         text = if (!node.isPassword && !node.isEditable) node.text?.toString() else null,
@@ -125,7 +156,7 @@ class AgentAccessibilityService : AccessibilityService() {
     }
     private fun submitIme(expected: String, query: String): Attempt {
         val root = activeRoot(expected) ?: return Attempt.FAILED
-        val field = focusedSearch(root, query) ?: return Attempt.FAILED
+        val field = focusedSearch(root, query) ?: return if (queryEditor(root, query)) Attempt.UNAVAILABLE else Attempt.FAILED
         if (Build.VERSION.SDK_INT < 30 || field.actionList.none { it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id }) return Attempt.UNAVAILABLE
         return if (field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) Attempt.ACCEPTED else Attempt.FAILED
     }
