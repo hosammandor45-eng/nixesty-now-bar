@@ -31,6 +31,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     val running = _running.asStateFlow()
     private var selection: CompletableDeferred<AppChoice?>? = null
     private var job: Job? = null
+    private var executionId = 0L
 
     fun submit(input: String) {
         if (job != null || _running.value || _pending.value != null) return
@@ -43,6 +44,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun dismiss() { _pending.value = null; record("أُلغي الإجراء.") }
     fun choose(choice: AppChoice?) { selection?.complete(choice) }
     fun stop() {
+        executionId++
         job?.cancel(); selection = null; _choices.value = emptyList()
         _pending.value = null
         if (job == null) _running.value = false
@@ -53,6 +55,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             record("الخدمة غير متصلة. فعّلها أولاً."); return
         }
         _running.value = true
+        val currentId = ++executionId
         job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             try {
                 var targetPackage: String? = null
@@ -82,7 +85,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                             if (target == null) false else {
                                 record("انتظار شاشة البحث في التطبيق المفتوح…")
                                 awaitReady { AgentAccessibilityService.openSearch(target) } &&
-                                    when (SearchSubmission(AgentAccessibilityService.searchUi(target, command.query)).run()) {
+                                    when (SearchSubmission(AgentAccessibilityService.searchUi(target, command.query) { executionId == currentId && job?.isActive == true }).run()) {
                                         SubmissionResult.VERIFIED -> true
                                         SubmissionResult.FAILED -> { record("تعذر إرسال البحث؛ تحقق من حقل البحث وزره."); false }
                                         SubmissionResult.UNCONFIRMED -> { record("تعذر تأكيد ظهور النتائج. ربما أُرسل البحث؛ تحقق قبل إعادة المحاولة."); false }

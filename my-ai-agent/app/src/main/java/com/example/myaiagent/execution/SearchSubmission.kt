@@ -4,44 +4,41 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 
-enum class SearchState { EDITOR, RESULTS, OTHER }
+enum class SearchState { EDITOR, SUGGESTIONS, RESULTS, OTHER }
 enum class Attempt { ACCEPTED, UNAVAILABLE, FAILED }
 enum class SubmissionResult { VERIFIED, FAILED, UNCONFIRMED }
-
 interface SearchUi {
     fun focusAndEnter(): Boolean
     fun state(): SearchState
     fun ime(): Attempt
-    fun button(): Attempt
+    fun suggestion(): Attempt
 }
 
-/** An accepted accessibility action is not evidence that the app performed a search. */
 class SearchSubmission(private val ui: SearchUi, private val pause: suspend () -> Unit = { delay(250) }, private val polls: Int = 20) {
     private suspend fun observe(): SearchState {
         repeat(polls) {
             coroutineContext.ensureActive()
-            val state = ui.state()
-            if (state == SearchState.RESULTS) return state
+            if (ui.state() == SearchState.RESULTS) return SearchState.RESULTS
             pause()
         }
+        coroutineContext.ensureActive()
         return ui.state()
     }
     suspend fun run(): SubmissionResult {
         coroutineContext.ensureActive()
-        if (!ui.focusAndEnter() || ui.state() != SearchState.EDITOR) return SubmissionResult.FAILED
+        if (!ui.focusAndEnter() || ui.state() !in setOf(SearchState.EDITOR, SearchState.SUGGESTIONS)) return SubmissionResult.FAILED
         coroutineContext.ensureActive()
         val ime = ui.ime()
-        if (ime == Attempt.ACCEPTED) {
-            when (observe()) {
-                SearchState.RESULTS -> return SubmissionResult.VERIFIED
-                SearchState.OTHER -> return SubmissionResult.UNCONFIRMED
-                SearchState.EDITOR -> Unit
-            }
+        // Always wait for delayed IME results before considering another action.
+        when (observe()) {
+            SearchState.RESULTS -> return SubmissionResult.VERIFIED
+            SearchState.SUGGESTIONS -> Unit
+            else -> return if (ime == Attempt.ACCEPTED) SubmissionResult.UNCONFIRMED else SubmissionResult.FAILED
         }
         coroutineContext.ensureActive()
-        // Only fall back if the original focused editor remains unchanged; never click on an unknown screen.
-        if (ui.state() != SearchState.EDITOR) return SubmissionResult.UNCONFIRMED
-        if (ui.button() != Attempt.ACCEPTED) return if (ime == Attempt.ACCEPTED) SubmissionResult.UNCONFIRMED else SubmissionResult.FAILED
+        if (ui.state() != SearchState.SUGGESTIONS) return SubmissionResult.UNCONFIRMED
+        coroutineContext.ensureActive()
+        if (ui.suggestion() != Attempt.ACCEPTED) return SubmissionResult.UNCONFIRMED
         return if (observe() == SearchState.RESULTS) SubmissionResult.VERIFIED else SubmissionResult.UNCONFIRMED
     }
 }

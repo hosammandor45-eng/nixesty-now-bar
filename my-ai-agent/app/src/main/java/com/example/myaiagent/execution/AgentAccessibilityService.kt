@@ -20,11 +20,11 @@ class AgentAccessibilityService : AccessibilityService() {
         fun execute(command: Command): ActionResult = instance?.perform(command) ?: ActionResult.FAILURE
         fun openSearch(packageName: String): ActionResult = instance?.openSearchControl(packageName) ?: ActionResult.FAILURE
         fun enterSearch(packageName: String, query: String): ActionResult = instance?.setSearchText(packageName, query) ?: ActionResult.FAILURE
-        fun searchUi(packageName: String, query: String): SearchUi = object : SearchUi {
-            override fun focusAndEnter() = instance?.focusAndEnter(packageName, query) == true
-            override fun state() = instance?.searchState(packageName, query) ?: SearchState.OTHER
-            override fun ime() = instance?.submitIme(packageName, query) ?: Attempt.FAILED
-            override fun button() = instance?.submitButton(packageName, query) ?: Attempt.FAILED
+        fun searchUi(packageName: String, query: String, isCurrent: () -> Boolean): SearchUi = object : SearchUi {
+            override fun focusAndEnter() = isCurrent() && instance?.focusAndEnter(packageName, query) == true
+            override fun state() = if (isCurrent()) instance?.searchState(packageName, query) ?: SearchState.OTHER else SearchState.OTHER
+            override fun ime() = if (isCurrent()) instance?.submitIme(packageName, query) ?: Attempt.FAILED else Attempt.FAILED
+            override fun suggestion() = if (isCurrent()) instance?.submitSuggestion(packageName, query, isCurrent) ?: Attempt.FAILED else Attempt.FAILED
         }
     }
 
@@ -94,14 +94,34 @@ class AgentAccessibilityService : AccessibilityService() {
         if (!setText(focused, query)) return false
         return activeRoot(expected)?.let { focusedSearch(it, query) } != null
     }
+    private fun snapshot(node: AccessibilityNodeInfo): SuggestionNode = SuggestionNode(
+        text = if (!node.isPassword && !node.isEditable) node.text?.toString() else null,
+        description = if (!node.isPassword && !node.isEditable) node.contentDescription?.toString() else null,
+        visible = node.isVisibleToUser, enabled = node.isEnabled, clickable = node.isClickable,
+        editable = node.isEditable, password = node.isPassword,
+        children = (0 until node.childCount).map { node.getChild(it)?.let(::snapshot) ?: SuggestionNode(visible = false, enabled = false) }
+    )
+    private fun queryEditor(root: AccessibilityNodeInfo, query: String): Boolean = nodes(root).any {
+        it.isVisibleToUser && it.isEditable && !it.isPassword && isSearchField(it) && it.text?.toString() == query
+    }
     private fun searchState(expected: String, query: String): SearchState {
         val root = activeRoot(expected) ?: return SearchState.OTHER
-        if (focusedSearch(root, query) != null) return SearchState.EDITOR
-        val focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focus != null && focus.isEditable && !focus.isPassword && isSearchField(focus)) return SearchState.OTHER
-        // Require query text on the target screen after leaving the focused editor.
-        return if (nodes(root).any { !it.isEditable && !it.isPassword && it.isVisibleToUser &&
-                (it.text?.toString() == query || it.contentDescription?.toString() == query) }) SearchState.RESULTS else SearchState.OTHER
+        if (queryEditor(root, query)) {
+            if (SuggestionMatcher.find(snapshot(root), query) != null) return SearchState.SUGGESTIONS
+            return SearchState.EDITOR
+        }
+        // Require a result list and query label after the editor has disappeared; keyboard dismissal alone is insufficient.
+        val all = nodes(root)
+        val label = all.any { !it.isEditable && !it.isPassword && it.isVisibleToUser &&
+            (it.text?.toString() == query || it.contentDescription?.toString() == query) }
+        val resultMarker = all.any {
+            val id = it.viewIdResourceName?.substringAfterLast('/')?.lowercase().orEmpty()
+            val description = it.contentDescription?.toString()?.let(SuggestionMatcher::normalize).orEmpty()
+            it.isVisibleToUser && (id == "search_results" || id == "search_results_list" ||
+                description == "search results" || description == SuggestionMatcher.normalize("نتائج البحث"))
+        }
+        return if (label && resultMarker && all.any { it.isVisibleToUser && it.isScrollable } &&
+            SuggestionMatcher.find(snapshot(root), query) == null) SearchState.RESULTS else SearchState.OTHER
     }
     private fun submitIme(expected: String, query: String): Attempt {
         val root = activeRoot(expected) ?: return Attempt.FAILED
@@ -109,11 +129,22 @@ class AgentAccessibilityService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < 30 || field.actionList.none { it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id }) return Attempt.UNAVAILABLE
         return if (field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) Attempt.ACCEPTED else Attempt.FAILED
     }
-    private fun submitButton(expected: String, query: String): Attempt {
+    private fun submitSuggestion(expected: String, query: String, isCurrent: () -> Boolean): Attempt {
+        if (!isCurrent()) return Attempt.FAILED
         val root = activeRoot(expected) ?: return Attempt.FAILED
-        if (focusedSearch(root, query) == null) return Attempt.FAILED
-        val controls = matching(root, searchLabels + setOf("Submit", "إرسال"))
-        return if (controls.size == 1 && click(controls.single())) Attempt.ACCEPTED else Attempt.UNAVAILABLE
+        if (!queryEditor(root, query)) return Attempt.FAILED
+        val path = SuggestionMatcher.find(snapshot(root), query) ?: return Attempt.UNAVAILABLE
+        // Discard the first tree; reacquire and compare the target just before clicking.
+        val fresh = activeRoot(expected) ?: return Attempt.FAILED
+        if (!isCurrent() || !queryEditor(fresh, query) || SuggestionMatcher.find(snapshot(fresh), query) != path) return Attempt.FAILED
+        var target = fresh
+        for (index in path) target = target.getChild(index) ?: return Attempt.FAILED
+        if (!target.refresh() || !target.isVisibleToUser || !target.isEnabled || !target.isClickable ||
+            target.packageName?.toString() != expected || !isCurrent()) return Attempt.FAILED
+        if (SuggestionMatcher.find(SuggestionNode(children = listOf(snapshot(target))), query) != listOf(0)) return Attempt.FAILED
+        val finalRoot = activeRoot(expected) ?: return Attempt.FAILED
+        if (!isCurrent() || !queryEditor(finalRoot, query) || SuggestionMatcher.find(snapshot(finalRoot), query) != path) return Attempt.FAILED
+        return if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) Attempt.ACCEPTED else Attempt.FAILED
     }
 
     private fun setText(node: AccessibilityNodeInfo, text: String): Boolean =
