@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">My AI Agent</string>
+    <string name="service_name">مساعد الأوامر</string>
+    <string name="service_description">ينفذ أوامرك الصريحة للتنقل والنقر وإدخال النص. لا يعمل إلا بعد تفعيله من إعدادات إمكانية الوصول.</string>
+</resources>
